@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T-Box</title>
+<link rel="manifest" href="manifest_v56.webmanifest">
+<style>
+body { font-family: Arial; background:#111; color:#fff; text-align:center; }
+button { padding:12px 20px; margin:10px; font-size:16px; border-radius:6px; }
+#log { margin-top:20px; font-size:14px; color:#0f0; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+
+<h2>T-Box Verbindung</h2>
+<button onclick="connectBLE()">🔵 Verbinden</button>
+<button onclick="disconnectBLE()">🔴 Trennen</button>
+
+<div id="log"></div>
+
+<script>
+let device;
+let server;
+let txChar;
+
+async function connectBLE(){
+  try{
+    log("Suche Gerät...");
+    device = await navigator.bluetooth.requestDevice({
+      filters:[{ namePrefix: "T-Box" }],
+      optionalServices:["6e400001-b5a3-f393-e0a9-e50e24dcca9e"]
+    });
+
+    device.addEventListener('gattserverdisconnected', ()=>{
+      log("Verbindung getrennt");
+    });
+
+    server = await device.gatt.connect();
+    log("Verbunden");
+
+    const service = await server.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
+    txChar = await service.getCharacteristic("6e400003-b5a3-f393-e0a9-e50e24dcca9e");
+
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged', handleData);
+
+    log("Notifications aktiv");
+  }catch(e){
+    log("FEHLER: " + e);
+  }
+}
+
+function disconnectBLE(){
+  if(device && device.gatt.connected){
+    device.gatt.disconnect();
+    log("Manuell getrennt");
+  }
+}
+
+function handleData(event){
+  const value = new TextDecoder().decode(event.target.value);
+  log("RX: " + value);
+}
+
+function log(txt){
+  document.getElementById("log").textContent += txt + "\n";
+}
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+</script>
+
+</body>
+</html>
