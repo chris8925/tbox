@@ -1,0 +1,11 @@
+{
+  "name": "T-Box",
+  "short_name": "T-Box",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c0e12",
+  "theme_color": "#0c0e12",
+  "description": "T-Box Prüf-/Zeitmess-Protokoll (BLE) – PWA",
+  "orientation": "portrait"
+}
