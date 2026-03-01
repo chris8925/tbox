@@ -1,0 +1,3290 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>T‑Box Prüfbox – UI Demo (Artikelliste über IndexedDB)</title>
+  <meta name="theme-color" content="#0c0e12">
+<style>
+  
+/* v5 Run Modal (overlay) */
+.modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(15,23,42,.45);z-index:3000;display:flex;align-items:center;justify-content:center;padding:14px;}
+.modalBox{background:#fff;border-radius:18px;width:min(980px, 96vw);box-shadow:0 18px 45px rgba(15,23,42,.40);overflow:hidden;}
+.modalHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 14px 10px 14px;border-bottom:1px solid #e5e7eb;}
+.modalTitle{font-weight:700;font-size:18px;color:#0f172a;line-height:1.1;}
+.modalSub{font-size:12px;color:#6b7280;margin-top:4px;}
+.modalBody{padding:12px 14px 14px 14px;}
+@media (max-width: 520px){
+  .modal{padding:10px;}
+  .modalBox{width:98vw;border-radius:16px;}
+  .modalHeader{padding:12px;}
+  .modalBody{padding:10px 12px 12px 12px;}
+}
+:root{
+    --bg:#f5f8fb; --card:#ffffff; --card-2:#f1f6fb; --ink:#0c2436; --muted:#5b6b7a;
+    --primary:#2b7cff; --accent:#1cbf98; --danger:#e04848;
+    --shadow:0 8px 20px rgba(0,0,0,.08); --radius:18px; --border:#dde6ef;
+    --chip-bg:#eaf2fb; --chip-ink:#195b8f; --chip-bd:#cfe2f4;
+    --input-bg:#ffffff; --input-bd:#cdd9e5; --input-ink:#0c2436; --input-ph:#8aa0b3;
+    --warn:#ffdc64; --warn-bd:#e3c53e;
+  }
+  [data-theme="dark"]{
+    --bg:#0f1419; --card:#1c252d; --card-2:#202a33; --ink:#e5eef6; --muted:#9fb1c3;
+    --primary:#5aa6ff; --accent:#2bd2a7; --danger:#ff7b7b; --shadow:0 10px 25px rgba(0,0,0,.35);
+    --border:#1a2128; --chip-bg:#13202a; --chip-ink:#9fc3de; --chip-bd:#22313c;
+    --input-bg:#14202a; --input-bd:#22313c; --input-ink:#e5eef6; --input-ph:#7e94a8;
+    --warn:#ffcc43; --warn-bd:#dfb22f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+  .app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
+  header{position:sticky;top:0;z-index:5;background:var(--card-2);display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);padding:12px 16px}
+  header .title{font-size:18px;font-weight:800}
+  .spacer{flex:1}
+  .badge{background:var(--chip-bg);color:var(--chip-ink);border:1px solid var(--chip-bd);padding:6px 10px;border-radius:12px;font-size:12px}
+  .themeBtn{border:1px solid var(--border);background:var(--card);color:var(--ink);border-radius:12px;padding:8px 10px;cursor:pointer}
+  main{padding:16px;flex:1}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;border:1px solid var(--border)}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .bigbtn{display:flex;flex-direction:column;gap:6px;align-items:flex-start;justify-content:center;border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;background:var(--card-2);box-shadow:var(--shadow);cursor:pointer;text-align:left}
+  .bigbtn h2{margin:0;font-size:22px}
+  .bigbtn span{font-size:13px;color:var(--muted)}
+  .hidden{display:none!important}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .value{font-size:28px;font-weight:900}
+  .label{font-size:14px;color:var(--muted)}
+  .sectionTitle{font-weight:900;margin:6px 0 10px 0;letter-spacing:.2px}
+  .pickBtn{border:1px solid var(--border);border-radius:14px;padding:10px 12px;font-weight:800;background:var(--card-2);cursor:pointer;font-size:14px}
+  .startTile{display:flex;align-items:center;justify-content:center;background:var(--primary);border-radius:16px;min-height:120px;box-shadow:var(--shadow);cursor:pointer;border:1px solid var(--border)}
+  .startTile span{font-size:22px;font-weight:900;color:#fff}
+  .startTile.stop{background:var(--danger)}
+  .statGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .statBox{background:var(--card-2);border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+  .statBox .title{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .statBox .val{font-size:26px;font-weight:900;margin-top:4px}
+  .list{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+
+  /* --- Snapshot Run Grid (2 Spalten, bis zu 12 Runs sichtbar) --- */
+  .runGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .runChip{
+    display:flex;flex-direction:column;gap:2px;
+    width:100%;
+    text-align:left;
+    padding:10px 12px;
+    border-radius:14px;
+    border:1px solid var(--border);
+    background:var(--card-2);
+    box-shadow:0 8px 18px rgba(0,0,0,.06);
+    cursor:pointer;
+  }
+  .runChip .top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .runChip .run{font-weight:900;letter-spacing:.02em}
+  .runChip .ms{font-weight:900}
+  .runChip .meta{font-size:12px;color:var(--muted);line-height:1.2}
+  .pill{background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center}
+  .pill .ms{font-size:18px;font-weight:900}
+  .pill .sub{font-size:12px;color:var(--muted)}
+  .footer{padding:18px 16px 30px 16px;background:var(--bg)}
+  .uploader{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .thumb{position:relative;width:100%;padding-top:100%;border-radius:12px;background:#eaf2fb;overflow:hidden;border:1px solid var(--border)}
+  [data-theme="dark"] .thumb{background:#15212b}
+  .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .thumb button{position:absolute;top:3px;right:3px;border:0;background:rgba(0,0,0,.6);color:#fff;border-radius:10px;padding:1px 6px;cursor:pointer}
+  .addTile{display:flex;align-items:center;justify-content:center;border:1.5px dashed #9ac3e2;border-radius:12px;padding:10px;height:100%;min-height:64px;color:#567a94;font-weight:700;font-size:12px}
+  [data-theme="dark"] .addTile{border-color:#365266;color:#9fb1c3}
+  .pickRow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .pickBtn.primary{background:var(--primary);color:#071119}
+  .pillInfo{background:var(--chip-bg);color:var(--chip-ink);border:1px solid var(--chip-bd);padding:6px 10px;border-radius:12px;font-size:12px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer;background:var(--card-2)}
+  .btn.warn{background:var(--warn); border-color:var(--warn-bd); color:#071119}
+  .form{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:13px;color:var(--muted)}
+  .field input{background:var(--input-bg);color:var(--ink);border:1px solid var(--input-bd);border-radius:12px;padding:12px 12px;font-size:15px;outline:none;width:100%}
+  .ta{background:var(--input-bg);color:var(--ink);border:1px solid var(--input-bd);border-radius:12px;padding:12px;font-size:15px;outline:none;width:100%;min-height:140px;resize:vertical; font-family:inherit; line-height:1.35;}
+  .desc{font-size:12px;color:var(--muted);min-height:16px}
+.ta::placeholder{color:var(--input-ph);} 
+.editable{cursor:pointer;}
+
+  .inlineInput{width:80px;text-align:center;border:none;background:transparent;font:inherit;outline:none;margin:0 auto;}
+
+  .bleBtn{min-width:110px;font-weight:600;}
+.bleBtn.connected{background:var(--accent);color:#fff;border-color:var(--accent);}
+.bleBtn.connecting{opacity:.8;}
+.bleBtn.error{background:var(--danger);color:#fff;border-color:var(--danger);}
+
+  /* --- Modern UI Tweaks (ohne Layout-Verschiebung) --- */
+  body{
+    background:radial-gradient(circle at top, rgba(43,124,255,0.08), transparent 55%), var(--bg);
+  }
+  header{
+    box-shadow:0 10px 25px rgba(15,35,52,0.18);
+    border-bottom:1px solid rgba(255,255,255,0.04);
+    backdrop-filter:blur(10px);
+  }
+  .badge{
+    border-radius:999px;
+    padding:4px 10px;
+    font-size:11px;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+  }
+  .card, .formCard, .chartCard{
+    border-radius:22px;
+    box-shadow:0 14px 40px rgba(0,0,0,0.12);
+    border:1px solid rgba(255,255,255,0.6);
+  }
+  .formCard{
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .formCard:hover{
+    transform:translateY(-2px);
+    box-shadow:0 18px 45px rgba(0,0,0,0.16);
+    border-color:var(--primary);
+  }
+  .btn, .tabBtn, .pickBtn, .chip{
+    transition:background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .12s ease, border-color .18s ease;
+    border-radius:999px;
+  }
+  .btn.primary, .pickBtn.primary{
+    box-shadow:0 10px 25px rgba(43,124,255,0.35);
+  }
+  .btn.primary:hover, .pickBtn.primary:hover{
+    transform:translateY(-1px);
+    box-shadow:0 14px 32px rgba(43,124,255,0.45);
+  }
+  .btn.secondary:hover{
+    background:rgba(43,124,255,0.06);
+    border-color:rgba(43,124,255,0.35);
+  }
+  .tabBar{
+    border-radius:999px;
+    padding:4px;
+    background:rgba(12,36,54,0.04);
+  }
+  .tabBtn{
+    position:relative;
+    border-radius:999px;
+    overflow:hidden;
+  }
+  .tabBtn.active{
+    box-shadow:0 8px 22px rgba(43,124,255,0.35);
+    background:linear-gradient(135deg,var(--primary),#5a9bff);
+    color:#fff;
+  }
+  .tabBtn.active::after{
+    content:'';
+    position:absolute;
+    inset:0;
+    background:radial-gradient(circle at top left, rgba(255,255,255,0.45), transparent 55%);
+    opacity:.6;
+    pointer-events:none;
+  }
+  .field input, .field select, .ta{
+    box-shadow:0 6px 18px rgba(0,0,0,0.05);
+    border-radius:14px;
+    border-color:rgba(205,217,229,0.9);
+  }
+  .field input:focus, .field select:focus, .ta:focus{
+    border-color:var(--primary);
+    box-shadow:0 0 0 2px rgba(43,124,255,0.22);
+  }
+  .thumb img{
+    border-radius:18px;
+    box-shadow:0 10px 28px rgba(0,0,0,0.25);
+  }
+  .thumb button{
+    box-shadow:0 8px 18px rgba(0,0,0,0.35);
+  }
+  .footer{
+    box-shadow:0 -10px 30px rgba(0,0,0,0.22);
+    border-top:1px solid rgba(255,255,255,0.1);
+    backdrop-filter:blur(14px);
+  }
+  .sectionTitle{
+    letter-spacing:.02em;
+  }
+
+  /* --- Feinschliff UI: bessere Lesbarkeit & Hierarchie --- */
+  header .title{
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    font-weight:800;
+    font-size:15px;
+  }
+  /* Karten optisch etwas „wertiger“, aber Hintergrund bleibt ruhig */
+  .card,
+  .formCard,
+  .chartCard{
+    border-radius:20px;
+    box-shadow:0 14px 30px rgba(15,23,42,0.14);
+    border:1px solid rgba(226,232,240,0.9);
+  }
+  /* Hauptkacheln (Zeit/Dauer) noch etwas kräftiger */
+  .startTile{
+    border-radius:22px;
+    box-shadow:0 18px 40px rgba(37,99,235,0.35);
+  }
+  .startTile.stop{
+    box-shadow:0 18px 40px rgba(220,38,38,0.45);
+  }
+  /* Statboxen stärker gebündelt */
+  .statBox{
+    border-radius:18px;
+    border:1px solid rgba(203,213,225,0.9);
+  }
+  .statBox .title{
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-size:11px;
+  }
+  .statBox .val{
+    font-size:22px;
+    font-weight:800;
+  }
+  /* Abschnittstitel klarer als Trenner */
+  .sectionTitle{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.16em;
+    margin-top:18px;
+    margin-bottom:10px;
+  }
+  /* Letzte 10 Zeiten & Snapshots Hinweis */
+  #time .sectionTitle + .pillInfo::after{
+    content:'  • Tippen für Diagramm';
+    font-weight:400;
+    color:var(--muted);
+    letter-spacing:0;
+    text-transform:none;
+  }
+  #burn h3.sectionTitle + .descSnapHint{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:-4px;
+    margin-bottom:8px;
+    text-transform:none;
+    letter-spacing:0;
+  }
+  /* Buttons klarer: primäre Aktionen voller, sekundär ruhiger */
+  .btn{
+    border-radius:999px;
+    font-size:13px;
+  }
+  .btn.primary{
+    box-shadow:0 10px 28px rgba(37,99,235,0.45);
+  }
+  .btn.primary:hover{
+    transform:translateY(-1px);
+    box-shadow:0 14px 36px rgba(37,99,235,0.6);
+  }
+  .btn.secondary{
+    background:rgba(148,163,184,0.12);
+  }
+  /* Bild-Bereich: Kamera-Button als Standard betonen */
+  .footer .uploader + .actions .btn:first-child,
+  .footer .actions .btn:first-child{
+    background:linear-gradient(135deg,var(--primary),#60a5fa);
+    color:#0b1120;
+    border:none;
+    box-shadow:0 10px 26px rgba(37,99,235,0.55);
+  }
+  .footer .uploader + .actions .btn:nth-child(2),
+  .footer .actions .btn:nth-child(2){
+    background:var(--card);
+  }
+  /* Thumbs wie kleine Fotokarten */
+  .thumb{
+    border-radius:16px;
+    box-shadow:0 12px 30px rgba(15,23,42,0.45);
+  }
+  .addTile{
+    border-radius:16px;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  /* Footer an Hintergrund angleichen, aber leicht absetzen */
+  .footer{
+    background:var(--bg);
+    border-top:1px solid var(--border);
+  }
+
+
+  .report-diagram { page-break-inside: avoid; break-inside: avoid; }
+  .report-diagram canvas, .report-diagram img { page-break-inside: avoid; break-inside: avoid; }
+  .html2pdf__page-break { page-break-before: always !important; break-before: page !important; }
+
+</style>
+
+<style>
+.image-grid{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 16px;}
+.image-tile{position:relative;width:96px;height:96px;border-radius:12px;overflow:hidden;background:#eef1f5;box-shadow:0 1px 2px rgba(0,0,0,.08) inset;}
+.image-tile img{width:100%;height:100%;object-fit:cover;}
+.image-tile button{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-weight:700;line-height:22px;cursor:pointer}
+.ta::placeholder{color:var(--input-ph);} 
+.editable{cursor:pointer;}
+</style>
+  <link rel="manifest" href="./manifest_v56.webmanifest">
+</head>
+<body>
+
+<div id="secureHint" style="position:sticky;top:0;z-index:9999;padding:10px 12px;font:14px/1.3 system-ui;background:#2c1e1e;color:#ffd27a;border-bottom:1px solid #553;display:none;">
+  Hinweis: Web-Bluetooth und PWA funktionieren in Chrome nur in einem <b>sicheren Kontext</b> (HTTPS oder localhost).
+  Über normales <b>http://</b> im LAN wird das ESP32 nicht gefunden. Lösung: HTTPS-Hosting (z.B. GitHub Pages/Netlify) oder lokale HTTPS-App.
+</div>
+
+<script>
+(function () {
+  const hint = document.getElementById('secureHint');
+  if (!hint) return;
+  const host = location.hostname;
+  const isLocalhost = (host === 'localhost' || host === '127.0.0.1');
+  const isSecure = (location.protocol === 'https:' || isLocalhost);
+  hint.style.display = isSecure ? 'none' : 'block';
+})();
+</script>
+
+<div class="app">
+  <header>
+    <div class="title">T-BOX PRÜFBOX</div>
+    <div class="spacer"></div>
+    <button id="themeToggle" class="themeBtn">🌙/🌞</button>
+    <button id="bleBtn" class="themeBtn bleBtn">🔵 Verbinden</button>
+  </header>
+
+  <main>
+    <!-- HOME -->
+    <section id="home">
+      <div class="grid2">
+        <button class="bigbtn" onclick="showView('time')">
+          <span>Modus</span><h2>Zeitmessung</h2>
+          <span>Live‑Zeiten, Winkel, Historie</span>
+        </button>
+        <button class="bigbtn" onclick="showView('burn')">
+          <span>Modus</span><h2>Dauertest</h2>
+          <span>Zyklen, Abbruch bei Abweichung, Snapshots</span>
+        </button>
+      </div>
+
+      <div class="card tile" style="margin-top:12px">
+        <div class="sectionTitle">Artikel‑Liste</div>
+        <div class="row">
+          <div id="listInfoHome" class="pillInfo">Keine Liste geladen</div>
+          <div class="spacer"></div>
+          <div class="actions">
+            <button class="btn warn" id="btnLoadHome">Liste laden</button>
+            <button class="btn" id="btnClearHome">Löschen</button>
+            <input type="file" id="listFileHome" accept=".json,.xlsx" hidden />
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ZEITMESSUNG -->
+    <section id="time" class="hidden">
+      <button class="pickBtn" onclick="showView('home')" style="margin-bottom:12px">← Zurück</button>
+      <div class="grid2">
+        <div class="card tile">
+          <div class="sectionTitle">Aktuelle Zeit</div>
+          <div class="value"><span id="tCurrentSec">0,0000</span> s</div>
+          <div class="label">= <span id="tCurrentMs">0</span> ms</div>
+        </div>
+        <div class="card startTile" id="tAction" onclick="toggleTime()">
+          <span id="tActionLabel">Messung starten</span>
+        </div>
+      </div>
+
+      <div class="card tile" style="margin-top:12px">
+      <div class="statGrid">
+        <div class="statBox">
+          <div class="title">Aktuelle Position</div>
+          <div class="valueLarge"><span id="tAngle">–</span>°</div>
+        </div>
+        <div class="statBox">
+          <div class="title">Ø Winkel</div>
+          <div class="valueLarge"><span id="tAvgAngleBox">–</span>°</div>
+        </div>
+        <div class="statBox">
+          <div class="title">Druck</div>
+          <div class="valueLarge">
+          <input id="tPressureInput" class="inlineInput" type="text" inputmode="decimal" pattern="[0-9,\.]*" value="0,00" autocomplete="off" />
+          <span>bar</span>
+        </div>
+        </div>
+      </div>
+    </div>
+
+      <div class="card tile" style="margin-top:12px">
+        <div class="sectionTitle">Letzte 10 Zeiten</div>
+        <div id="tList" class="list"></div>
+      </div>
+
+
+      <div class="card tile" style="margin-top:12px">
+        <div class="sectionTitle">Snapshots</div>
+        <div class="pillInfo" style="margin-top:-6px;margin-bottom:8px">Tippen für Zeit‑Diagramm</div>
+        <div id="tSnaps" class="list"></div>
+      </div>
+
+      
+    </section>
+
+    <!-- DAUERTEST -->
+    <section id="burn" class="hidden">
+      <button class="pickBtn" onclick="showView('home')" style="margin-bottom:12px">← Zurück</button>
+      <div class="grid2">
+        <div class="card tile">
+          <div class="sectionTitle">Konfiguration</div>
+          <div class="row"><div class="label">Zyklen Soll</div><div class="value editable" id="burnCyclesValue" data-value="1000">1000</div></div>
+          <div class="row"><div class="label">Pause<br><span class="sub">zwischen Zyklen</span></div><div class="value editable" id="burnPauseValue" data-value="2000">2000 ms</div></div>
+          <div class="row"><div class="label">Abweichung (Stopp bei)</div><div class="value editable" id="burnDeviationValue" data-value="5">±5°</div></div>
+        </div>
+        <div class="card startTile" id="bAction" onclick="toggleBurn()">
+          <span id="bActionLabel">START</span>
+        </div>
+      </div>
+
+      <div class="card tile" style="margin-top:12px">
+        <div class="row">
+          <div><div class="label">Zyklen</div><div class="value"><span id="bCyc">0</span> / <span id="bMax">1000</span></div></div>
+          <div class="value" id="bAngleNow">85</div>
+        </div>
+        <div style="height:10px;border-radius:10px;background:var(--card-2);border:1px solid var(--border);margin-top:10px;">
+          <div id="bProg" style="height:100%;width:0%;background:linear-gradient(90deg,#2b7cff,#0b3673);border-radius:10px"></div>
+        </div>
+      </div>
+
+      <div id="burnErrCard" class="card tile" style="margin-top:12px;background:#ffe9e9;border-color:#ffd0d0;display:none">
+        <div class="row"><div id="burnErrTitle" class="sectionTitle" style="margin:0">⚠ Fehler</div><div id="burnErrBadge" class="label">live</div></div>
+        <div class="row"><div class="label">Letzter Schaltvorgang</div><div class="value"><span id="bLast">–</span> ms</div></div>
+        <div class="row"><div class="label">Max. Abweichung</div><div class="value"><span id="bDev">–</span>°</div></div>
+      </div>
+
+      <div class="card tile" style="margin-top:12px"><div class="sectionTitle">Snapshots</div><div class="pillInfo" style="margin-top:-6px;margin-bottom:8px">Tippen für Zeit‑Diagramm</div><div id="bSnaps" class="list"></div></div>
+    </section>
+  </main>
+
+  <!-- Footer (Bilder immer) -->
+  <div class="footer" id="footer">
+    <div class="sectionTitle" style="margin:0 0 6px 0;">Bilder (max. 4)</div>
+    <div class="pickRow">
+      <button id="openCamera" class="pickBtn primary">+ Foto aufnehmen</button>
+      <button id="openGallery" class="pickBtn">+ Aus Galerie</button>
+      <input id="fileCamera" type="file" accept="image/*" capture="environment" hidden />
+      <input id="fileGallery" type="file" accept="image/*" multiple hidden />
+    </div>
+    <div class="uploader" id="uploader">
+      <div class="addTile" id="addInfo">Bis zu 4 Bilder hinzufügen</div>
+    </div>
+
+    <!-- Zeitmessung: Stammdaten -->
+    <div id="timeExtras">
+      <div class="card formCard">
+          <div class="sectionTitle">
+Stammdaten zum Test</div>
+        <div class="form">
+          <div class="field"><label>Artikelnummer Antrieb</label><input id="f_antrieb" list="dl_artikel" placeholder="z. B. AP-12345" / inputmode="numeric" pattern="[0-9]*" autocomplete="off"><div class="desc" id="d_antrieb"></div></div>
+          <div class="field"><label>Artikelnummer Magnetventil</label><input id="f_magnetventil" list="dl_artikel" placeholder="z. B. MV-67890" / inputmode="numeric" pattern="[0-9]*" autocomplete="off"><div class="desc" id="d_magnetventil"></div></div>
+          <div class="field"><label>Artikelnummer Schalldämpfer</label><input id="f_schalldaempfer" list="dl_artikel" placeholder="z. B. SD-100" / inputmode="numeric" pattern="[0-9]*" autocomplete="off"><div class="desc" id="d_schalldaempfer"></div></div>
+          <div class="field"><label>Artikelnummer Rohr/Schlauch</label><input id="f_rohr" list="dl_artikel" placeholder="z. B. RS-25-6" / inputmode="numeric" pattern="[0-9]*" autocomplete="off"><div class="desc" id="d_rohr"></div></div>
+          <div class="field"><label>Artikelnummer Klappe/Kugelhahn</label><input id="f_klappe" list="dl_artikel" placeholder="z. B. 20001234" / inputmode="numeric" pattern="[0-9]*" autocomplete="off"><div class="desc" id="d_klappe"></div></div>
+          <div class="field"><label>Seriennummer Antrieb</label><input id="f_seriennr" placeholder="z. B. 23051234" /><div class="desc"></div></div>
+<div class="field"><label>Kürzel Bearbeiter</label><input id="f_kuerzel" placeholder="Initialen" /><div class="desc"></div></div>
+        </div>
+        <datalist id="dl_artikel"></datalist>
+        <div class="label">Hinweis: Liste & Werte werden lokal gespeichert (dieses Gerät).</div>
+      <div class="card tile" style="margin-top:14px">
+        <div class="sectionTitle">Bemerkungen</div>
+        <div class="form">
+          <div class="field">
+            <textarea id="f_notes_time" class="ta" placeholder="Auffälligkeiten und Fehler"></textarea>
+            <div class="desc">Wird lokal auf diesem Gerät gespeichert.</div>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="card tile" style="margin-top:14px">
+        <div class="sectionTitle">PDF-Protokoll</div>
+        <div class="form">
+          <div class="field">
+            <button id="btn_time_pdf" class="btn" style="width:100%">PDF-Protokoll erstellen</button>
+            <div class="desc">Erstellt ein Protokoll mit Zeiten, Winkeln, Bildern und Stammdaten.</div>
+          </div>
+        </div>
+      </div>
+
+</div>
+    </div>
+<!-- Dauertest: NUR Antrieb + Kürzel -->
+    <div id="burnExtras" class="hidden">
+      <div class="card tile" style="margin-top:14px">
+        <div class="sectionTitle">
+Stammdaten (Dauertest)</div>
+        <div class="form">
+          <div class="field"><label>Artikelnummer Antrieb</label><input id="f_burn_antrieb" list="dl_artikel" placeholder="z. B. AP-12345" / inputmode="numeric" pattern="[0-9]*" autocomplete="off"><div class="desc" id="d_burn_antrieb"></div></div>
+          <div class="field"><label>Artikelnummer Klappe/Kugelhahn</label><input id="f_burn_partner" type="text" inputmode="numeric" placeholder="z. B. 20001234" /><div class="desc" id="d_burn_partner"></div></div>
+          <div class="field"><label>Seriennummer Antrieb</label><input id="f_burn_seriennr" placeholder="z. B. 23051234" /><div class="desc"></div></div>
+<div class="field"><label>Kürzel Bearbeiter</label><input id="f_burn_kuerzel" placeholder="Initialen" /><div class="desc"></div></div>
+        </div>
+</div>
+      <div class="spacer16"></div>
+      <div class="card tile" style="margin-top:14px">
+        <div class="sectionTitle">Bemerkungen</div>
+        <div class="form">
+          <div class="field">
+            <textarea id="f_notes_burn" class="ta" placeholder="Auffälligkeiten und Fehler"></textarea>
+            <div class="desc">Wird lokal auf diesem Gerät gespeichert.</div>
+          </div>
+        </div>
+      
+      <div class="card tile" style="margin-top:14px">
+        <div class="sectionTitle">PDF-Protokoll</div>
+        <div class="form">
+          <div class="field">
+            <button id="btn_burn_pdf" class="btn" style="width:100%">PDF-Protokoll erstellen</button>
+            <div class="desc">Erstellt ein Protokoll mit Zyklen, Snapshots, Bildern und Stammdaten.</div>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+</div>
+
+<script>
+// Theme
+const themeBtn=document.getElementById('themeToggle');
+function setTheme(t){document.body.setAttribute('data-theme',t);localStorage.setItem('theme',t)}
+setTheme(localStorage.getItem('theme')||'light');
+themeBtn.addEventListener('click',()=>setTheme(document.body.getAttribute('data-theme')==='dark'?'light':'dark'));
+
+// Navigation
+function showView(id){
+  document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  const footer=document.getElementById('footer');
+  footer.style.display=(id!=='home')?'block':'none';
+  document.getElementById('timeExtras').style.display=(id==='time')?'block':'none';
+  document.getElementById('burnExtras').classList.toggle('hidden', id!=='burn');
+
+  // aktive Bild-Gruppe je nach Modus umschalten (Optik bleibt gleich)
+  if(typeof setPhotoMode==='function'){
+    if(id==='time'){ setPhotoMode('time'); }
+    else if(id==='burn'){ setPhotoMode('burn'); }
+  }
+
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+showView('home');
+
+// Zeitmessung – Werte kommen vom ESP32
+let runTime = false;              // ob der Zeitmess-Modus aktiv ist
+let times = [];                   // letzte 10 Zeiten (ms)
+let angleSamples = [];            // letzte Winkelwerte für Ø-Berechnung
+let lastTimeMs = null;            // letzte gemessene Zeit (ms)
+let currentAngle = null;          // aktueller Winkel (°)
+let currentPressureBar = null;    // optionaler Druckwert
+
+function toggleTime(){
+  runTime = !runTime;
+  const tile = document.getElementById('tAction');
+  const label = document.getElementById('tActionLabel');
+  if (tile && label){
+    tile.classList.toggle('stop', runTime);
+    label.textContent = runTime ? 'Messung läuft' : 'Messung starten';
+  }
+  // Hier später Start/Stop-Kommando an das ESP32 senden, z. B.:
+  // sendBleCommand(runTime ? 'TIME_START' : 'TIME_STOP');
+}
+
+// Liste der letzten 10 Zeiten rendern
+// Zeitmessung: Letzte Zeiten + Snapshots (max. 10)
+let timeSnaps = []; // Ringpuffer für Snapshot-Chips (ms)
+
+function renderTimes(){
+  const wrap = document.getElementById('tList');
+  if(wrap){
+    wrap.innerHTML = '';
+    times.forEach(ms => {
+      const div = document.createElement('div');
+      div.className = 'pill';
+      div.innerHTML = `<div class="ms">${ms}</div><div class="sub">ms</div>`;
+      wrap.appendChild(div);
+    });
+  }
+
+  // Snapshots separat (z.B. später auch Diagramm-Traces) – aktuell: Zeiten als Snapshot
+  const sw = document.getElementById('tSnaps');
+  if(sw){
+    sw.innerHTML = '';
+    timeSnaps.forEach(ms => {
+      const div = document.createElement('div');
+      div.className = 'pill';
+      div.innerHTML = `<div class="ms">${ms}</div><div class="sub">ms</div>`;
+      sw.appendChild(div);
+    });
+  }
+}
+
+// UI für Zeitmessung aus Statusvariablen aktualisieren
+function updateTimeUi(){
+  // aktuelle Zeit
+  const elSec = document.getElementById('tCurrentSec');
+  const elMs  = document.getElementById('tCurrentMs');
+  if (typeof lastTimeMs === 'number'){
+    const ms = lastTimeMs;
+    const sec = ms / 1000;
+    if (elSec) elSec.textContent = sec.toFixed(4).replace('.', ',');
+    if (elMs)  elMs.textContent  = ms.toFixed(1).replace('.', ',');
+  } else {
+    if (elSec) elSec.textContent = '0,0000';
+    if (elMs)  elMs.textContent  = '0';
+  }
+
+  // aktuelle Position
+  const angleEl = document.getElementById('tAngle');
+  if (angleEl){
+    angleEl.textContent = (currentAngle === null || isNaN(currentAngle)) ? '–' : Math.round(currentAngle);
+  }
+
+  // Ø Winkel
+  const avgEl = document.getElementById('tAvgAngleBox');
+  if (avgEl){
+    if (angleSamples.length){
+      const sum = angleSamples.reduce((a,b)=>a+b,0);
+      const avg = sum / angleSamples.length;
+      avgEl.textContent = (Math.round(avg * 10) / 10).toString().replace('.', ',');
+    } else {
+      avgEl.textContent = '–';
+    }
+  }
+
+  // Druckanzeige (falls vom ESP32 geschickt)
+  const pressInput = document.getElementById('tPressureInput');
+  if (pressInput){
+    if (currentPressureBar !== null && !isNaN(currentPressureBar)){
+      pressInput.value = currentPressureBar.toFixed(2).replace('.', ',');
+    }
+    // sonst lässt der Nutzer ihn manuell eingeben
+  }
+
+  // Historie-Liste
+  renderTimes();
+}
+
+// Dauertest – Werte kommen vom ESP32
+let burnRun = false;              // ob der Dauertest aktiv ist
+let burnCyc = 0;                  // aktuelle Zykluszahl
+let lastSwitchTime = null;        // letzter Schaltvorgang (ms)
+let maxDeviation = null;          // maximale Abweichung (°)
+let burnCurrentAngle = null;      // aktuelle Position für Dauertest (°)
+let burnHasError = false;          // Progressbar rot bei ERR
+
+// Fehlerkarte (im Dauertest) – nur bei ERR != 0 anzeigen
+function burnHideErrorCard(){
+  const card = document.getElementById('burnErrCard');
+  if(card) card.style.display = 'none';
+  burnHasError = false;
+  try{ updateBurnUi(); }catch(e){}
+}
+
+function burnAngleDistDeg(a, b){
+  // minimaler Abstand in Grad (0..180)
+  if(!Number.isFinite(a) || !Number.isFinite(b)) return NaN;
+  let d = Math.abs(a - b) % 360;
+  if(d > 180) d = 360 - d;
+  return d;
+}
+
+function burnShowErrorFromRun(run){
+  const card = document.getElementById('burnErrCard');
+  if(!card || !run) return;
+
+  const errNum = Number(run.err||0)||0;
+  if(!errNum || errNum === 4){ // 4=PAUSE (kein Fehler)
+    burnHideErrorCard();
+    return;
+  }
+
+  burnHasError = true;
+
+  // Titel/Code
+  const title = document.getElementById('burnErrTitle');
+  const badge = document.getElementById('burnErrBadge');
+  const errTxt =
+    (errNum === 1) ? 'Timeout / keine Endlage' :
+    (errNum === 2) ? 'Winkelabweichung' :
+    (errNum === 3) ? 'Zeitabweichung' :
+    ('ERR ' + errNum);
+
+  if(title) title.textContent = '⚠ Fehler: ' + errTxt;
+  if(badge) badge.textContent = 'live';
+
+  // Werte für Karte befüllen
+  lastSwitchTime = Number(run.t_ms||run.t||NaN);
+  const dev = burnAngleDistDeg(Number(run.end), Number(run.tgt));
+  maxDeviation = Number.isFinite(dev) ? dev : null;
+
+  updateBurnUi();
+
+  card.style.display = 'block';
+
+  // Optional: kleine Haptik/Signal (falls erlaubt)
+  try{ if(navigator.vibrate) navigator.vibrate(40); }catch(e){}
+}
+
+// Konfiguration des Dauertests auslesen
+function getBurnConfig(){
+  const cyclesEl = document.getElementById('burnCyclesValue');
+  const pauseEl  = document.getElementById('burnPauseValue');
+  const devEl    = document.getElementById('burnDeviationValue');
+  const cycles   = parseInt((cyclesEl && (cyclesEl.dataset.value || cyclesEl.textContent)) || '1000', 10) || 0;
+  const pauseMs  = parseInt((pauseEl  && (pauseEl.dataset.value  || pauseEl.textContent))  || '2000', 10) || 0;
+  const devDeg   = parseInt((devEl    && (devEl.dataset.value    || devEl.textContent))    || '5', 10)   || 0;
+  return { cycles, pauseMs, devDeg };
+}
+
+// Maximale Zyklenzahl (Fallback 1000)
+function getBurnMaxCycles(){
+  const cfg = getBurnConfig();
+  return cfg.cycles > 0 ? cfg.cycles : 1000;
+}
+
+// Wird aufgerufen, wenn sich die Konfiguration ändert
+function onBurnConfigChange(){
+  const max = getBurnMaxCycles();
+  const maxEl = document.getElementById('bMax');
+  if (maxEl) maxEl.textContent = max;
+  updateBurnUi();
+}
+
+// Payload für ESP32 (Konfiguration + Datum/Uhrzeit)
+function getBurnConfigPayloadForEsp32(){
+  const cfg = getBurnConfig();
+  const now = new Date();
+  const pad = n => (n < 10 ? '0' : '') + n;
+  const dateStr = pad(now.getDate()) + '.' + pad(now.getMonth()+1) + '.' + now.getFullYear();
+  const timeStr = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+  // Format: CFG_BURN;Zyklen;PauseMs;Abweichung;Datum;Uhrzeit
+  return `CFG_BURN;${cfg.cycles};${cfg.pauseMs};${cfg.devDeg};${dateStr};${timeStr}`;
+}
+
+// UI für Dauertest aus Statusvariablen und Konfiguration aktualisieren
+function updateBurnUi(){
+  const max = getBurnMaxCycles() || 1;
+
+  const cycEl = document.getElementById('bCyc');
+  if (cycEl) cycEl.textContent = burnCyc;
+
+  const maxEl = document.getElementById('bMax');
+  if (maxEl) maxEl.textContent = max;
+
+
+const prog = document.getElementById('bProg');
+if (prog){
+  const v = Math.max(0, Math.min(burnCyc, max));
+  const pct = Math.max(0, Math.min(100, Math.round(v / max * 100)));
+  prog.style.width = pct + '%';
+  // Farbe: normal blau, bei Fehler rot
+  prog.style.background = burnHasError
+    ? 'linear-gradient(90deg,#ef4444,#7f1d1d)'
+    : 'linear-gradient(90deg,#2b7cff,#0b3673)';
+}
+
+  const lastEl = document.getElementById('bLast');
+  if (lastEl){
+    lastEl.textContent = (lastSwitchTime === null || isNaN(lastSwitchTime)) ? '–' : Math.round(lastSwitchTime);
+  }
+
+  const devEl = document.getElementById('bDev');
+  if (devEl){
+    devEl.textContent = (maxDeviation === null || isNaN(maxDeviation)) ? '–' : Math.round(maxDeviation);
+  }
+
+
+const angleNowEl = document.getElementById('bAngleNow');
+if (angleNowEl){
+  const v = Math.max(0, Math.min(burnCyc, max));
+  const pct = Math.max(0, Math.min(100, Math.round(v / max * 100)));
+  angleNowEl.textContent = pct + ' %';
+}
+}
+
+function toggleBurn(){
+  burnRun = !burnRun;
+  const tile = document.getElementById('bAction');
+  const label = document.getElementById('bActionLabel');
+  if (tile && label){
+    tile.classList.toggle('stop', burnRun);
+    label.textContent = burnRun ? 'STOPP' : 'START';
+  }
+  // Hier später Start/Stop-Kommando an das ESP32 senden, z. B.:
+  // sendBleCommand(burnRun ? 'BURN_START' : 'BURN_STOP');
+}
+// ---- ESP32-Protokoll: Zeitmessung & Dauertest ----
+
+// Zeitmessungs-Nachrichten vom ESP32 verarbeiten
+// Unterstützte Formate (Beispiele):
+//   TIME_LIVE;ms;angle[;pressureBar]
+//   TIME_RESULT;ms;angle[;pressureBar]
+//   TIME_LIST;ms1,ms2,ms3
+//   TIME_CLEAR
+function processTimePayload(msg){
+  if(!msg || typeof msg !== 'string') return;
+  var parts = msg.trim().split(';');
+  var cmd = parts[0];
+
+  if(cmd === 'TIME_LIVE'){
+    // Laufende Messung - nur Anzeige, keine Historie
+    var ms  = parts[1] ? parseFloat(parts[1]) : null;
+    var ang = parts[2] ? parseFloat(parts[2]) : null;
+    var pbar = parts[3] ? parseFloat(parts[3]) : null;
+    if(ms !== null && !isNaN(ms)) lastTimeMs = ms;
+    if(ang !== null && !isNaN(ang)) currentAngle = ang;
+    if(pbar !== null && !isNaN(pbar)) currentPressureBar = pbar;
+    updateTimeUi();
+  } else if(cmd === 'TIME_RESULT'){
+    // Abgeschlossene Messung - in Historie schieben
+    var ms2  = parts[1] ? parseFloat(parts[1]) : null;
+    var ang2 = parts[2] ? parseFloat(parts[2]) : null;
+    var pbar2 = parts[3] ? parseFloat(parts[3]) : null;
+    if(ms2 !== null && !isNaN(ms2)){
+      lastTimeMs = ms2;
+      times.push(ms2);
+      if(times.length>10) times.shift();
+    
+      // Snapshots (max 10)
+      timeSnaps.push(ms2);
+      if(timeSnaps.length>10) timeSnaps.shift();
+}
+    if(ang2 !== null && !isNaN(ang2)){
+      currentAngle = ang2;
+      angleSamples.push(ang2);
+      if(angleSamples.length>10) angleSamples.shift();
+    }
+    if(pbar2 !== null && !isNaN(pbar2)) currentPressureBar = pbar2;
+    updateTimeUi();
+  } else if(cmd === 'TIME_LIST'){
+    // Komplette Historie vom ESP32
+    var list = parts[1] ? parts[1].split(',').map(function(x){ return parseFloat(x); }).filter(function(n){ return !isNaN(n); }) : [];
+    times = list.slice(-10);
+    timeSnaps = times.slice(-10);
+    lastTimeMs = times.length ? times[times.length-1] : null;
+    updateTimeUi();
+  } else if(cmd === 'TIME_CLEAR'){
+    times = [];
+    timeSnaps = [];
+    angleSamples = [];
+    lastTimeMs = null;
+    currentAngle = null;
+    currentPressureBar = null;
+    updateTimeUi();
+  }
+}
+
+// Hilfen für Snapshot-Chips (Dauertest)
+// Dauertest Snapshots: mit Label, damit man später alles auseinanderhalten kann
+// burnSnapsMeta: [{label:'FIRST'|'MILE'|'LAST'|'SNAP', ms: Number, runId?:String}]
+let burnSnapsMeta = [];
+
+function appendSnapshotChip(item){
+  var cont = document.getElementById('bSnaps');
+  if(!cont) return;
+
+  var ms = (typeof item === 'object') ? item.ms : item;
+  var label = (typeof item === 'object') ? (item.label || 'SNAP') : 'SNAP';
+  var runId = (typeof item === 'object') ? (item.runId || '') : '';
+
+  var v = parseFloat(ms);
+  if(isNaN(v)) return;
+
+  var div = document.createElement('div');
+  div.className = 'pill';
+  div.style.cursor = 'pointer';
+  div.dataset.runId = runId;
+  div.dataset.label = label;
+  div.dataset.ms = String(Math.round(v));
+
+  // Optik wie Zeitmessung, aber Subtext zeigt Label + ms
+  div.innerHTML = '<div class="ms">'+Math.round(v)+'</div><div class="sub">'+label+'</div>';
+
+  // Klick: wenn später Trace vorhanden -> Diagramm öffnen, sonst zumindest Highlight/Info
+  div.onclick = function(){
+    // Wenn du später RUN_ID/TRACE verknüpfst, kann hier direkt openBurnSnapshot(runId) rein.
+    // Aktuell: öffne vorhandenes Snapshot-Modal (bleibt kompatibel) und markiere Auswahl.
+    try{
+      if(typeof openSnapshotModal === 'function'){
+        openSnapshotModal(label, Math.round(v), runId);
+      }
+    }catch(e){}
+  };
+
+  cont.appendChild(div);
+}
+
+function setSnapshotListFromArray(arr){
+  burnSnapsMeta = [];
+  (arr || []).forEach(function(v){
+    burnSnapsMeta.push({label:'SNAP', ms: v});
+  });
+  renderBurnSnaps();
+}
+
+function renderBurnSnaps(){
+  var cont = document.getElementById('bSnaps');
+  if(!cont) return;
+  cont.innerHTML = '';
+  burnSnapsMeta.slice(-10).forEach(function(it){
+    appendSnapshotChip(it);
+  });
+}
+// Dauertest-Nachrichten vom ESP32 verarbeiten
+// Unterstützte Formate (Beispiele):
+//   BURN_STATUS;cycles;lastMs;dev;angle
+//   BURN_SNAPSHOT;ms
+//   BURN_SNAPLIST;ms1,ms2,ms3
+//   BURN_CLEAR_SNAPS
+function processBurnPayload(msg){
+  if(!msg || typeof msg !== 'string') return;
+  var parts = msg.trim().split(';');
+  var cmd = parts[0];
+
+  if(cmd === 'BURN_STATUS'){
+    var c   = parts[1] ? parseInt(parts[1],10) : 0;
+    var ms  = parts[2] ? parseFloat(parts[2]) : null;
+    var dev = parts[3] ? parseFloat(parts[3]) : null;
+    var ang = parts[4] ? parseFloat(parts[4]) : null;
+
+    if(!isNaN(c)) burnCyc = c;
+    if(ms !== null && !isNaN(ms))  lastSwitchTime = ms;
+    if(dev !== null && !isNaN(dev)) maxDeviation = dev;
+    if(ang !== null && !isNaN(ang)) burnCurrentAngle = ang;
+    updateBurnUi();
+  } else if(cmd === 'BURN_SNAPSHOT'){
+    var v = parts[1] ? parseFloat(parts[1]) : null;
+    if(v !== null && !isNaN(v)){
+      burnSnapsMeta.push({label:'SNAP', ms:v});
+      if(burnSnapsMeta.length>10) burnSnapsMeta = burnSnapsMeta.slice(-10);
+      renderBurnSnaps();
+    }
+  } else if(cmd === 'BURN_SNAPLIST'){
+    var list = parts[1] ? parts[1].split(',').map(function(x){ return parseFloat(x); }).filter(function(n){ return !isNaN(n); }) : [];
+    setSnapshotListFromArray(list);
+  } else if(cmd === 'BURN_CLEAR_SNAPS'){
+    setSnapshotListFromArray([]);
+  }
+}
+
+// Globaler Einstiegspunkt für BLE-Daten: roher String vom ESP32
+// ====== RUN/TRACE Speicher für neues ESP32-Protokoll (META/RUN/TRACE/SUM) ======
+const v5RunsById = {};
+// expose for PDF generator and debugging
+window.v5RunsById = v5RunsById;
+let v5ActiveRunId = null; // currently opened run diagram
+          // runId -> {testId,cycle,dir,t_ms,end,err,tag,trace:[]}
+const v5PendingTrace = {};      // runId -> {parts,got,points:[]}
+const v5TimeRuns = [];          // FIFO für UI (letzte 20)
+const v5DtRuns = { FIRST:[], MILE:[], LAST:[] };
+const V5_TIME_KEEP = 20;
+
+// CFG_DT pro TestId (vom ESP32): speichert u.a. Pause-Zeit für Diagramm-Overlays
+const v5CfgDtByTestId = {}; // testId -> {pause_s, cycles, ang_tol, time_tol_s, refA2B, refB2A, ts}
+
+// META pro TestId (vom ESP32): BASE, A, B, REF_*, SAMP_*
+const v5MetaByTestId = {};      // testId -> {type, base, A, B, refA2B, refB2A, sampA2B, sampB2A, ts}
+
+function v5ParseKv(parts, startIdx){
+  const o = {};
+  for(let i=startIdx;i<parts.length;i++){
+    const p = (parts[i]||'').trim();
+    if(!p) continue;
+    const eq = p.indexOf('=');
+    if(eq<0) continue;
+    const k = p.slice(0,eq).trim();
+    const v = p.slice(eq+1).trim();
+    o[k] = v;
+  }
+  return o;
+}
+
+function v5PushTimeRun(run){
+  v5TimeRuns.push(run);
+  while(v5TimeRuns.length > V5_TIME_KEEP) v5TimeRuns.shift();
+  // in bestehende „Letzte 10 Zeiten“ Logik einspeisen (für die alte UI)
+  try{
+    const ms = Number(run.t_ms||run.t||0);
+    if(Number.isFinite(ms) && ms>0){
+      timeHistory.unshift(ms);
+      if(timeHistory.length>20) timeHistory.length=20;
+      window.updateTimeList && window.updateTimeList();
+    }
+  }catch(e){}
+  v5RenderSnapshotChips();
+}
+
+function v5PushDtRun(run){
+  const tag = (run.tag||'LAST').toUpperCase();
+  if(tag === 'FIRST'){
+    v5DtRuns.FIRST.push(run);
+    if(v5DtRuns.FIRST.length>10) v5DtRuns.FIRST.length=10;
+  } else if(tag === 'MILE'){
+    v5DtRuns.MILE.push(run);
+    if(v5DtRuns.MILE.length>60) v5DtRuns.MILE.shift();
+  } else {
+    v5DtRuns.LAST.push(run);
+    while(v5DtRuns.LAST.length>20) v5DtRuns.LAST.shift();
+  }
+  v5RenderSnapshotChips();
+}
+
+function v5EnsureRunListContainer(which){
+  const host = document.getElementById(which);
+  if(!host) return null;
+  let box = host.querySelector('.v5-runlist');
+  if(box) return box;
+  box = document.createElement('div');
+  box.className = 'v5-runlist runGrid';
+  box.style.marginTop = '10px';
+  host.appendChild(box);
+  return box;
+}
+
+function v5RenderSnapshotChips(){
+  // Zeitmessung: Runs unter „Snapshots“ (tSnaps) — max. 12, 2 Spalten
+  const tHost = v5EnsureRunListContainer('tSnaps');
+  if(tHost){
+    tHost.innerHTML = '';
+    const runs = v5TimeRuns.slice().reverse().slice(0,12); // newest first
+    runs.forEach((r, idx)=>{
+      const btn = document.createElement('button');
+      btn.className = 'runChip';
+      const runNo = idx + 1;
+      const ms = Number(r.t_ms||r.t||0);
+      btn.innerHTML =
+        '<div class="top">' +
+          '<div class="run">Run ' + runNo + '</div>' +
+          '<div class="ms">' + (Number.isFinite(ms)? Math.round(ms): '–') + ' ms</div>' +
+        '</div>' +
+        '<div class="meta">ID ' + (r.runId ?? '–') + (r.testId ? (' · ' + r.testId) : '') + '</div>';
+      btn.onclick = ()=>v5OpenRunDiagram(r.runId, 'Zeitmessung');
+      tHost.appendChild(btn);
+    });
+  }
+
+  // Dauertest: Runs unter „Snapshots“ (bSnaps) — max. 12, 2 Spalten
+  const bHost = v5EnsureRunListContainer('bSnaps');
+  if(bHost){
+    bHost.innerHTML = '';
+
+    // Sammle alle DT-Runs in eine Liste (newest first, robust gegen unterschiedliche Queues)
+    const all = []
+      .concat(v5DtRuns.LAST.slice().reverse())
+      .concat(v5DtRuns.MILE.slice().reverse())
+      .concat(v5DtRuns.FIRST.slice().reverse())
+      .slice(0,12);
+
+    all.forEach((r, idx)=>{
+      const btn = document.createElement('button');
+      btn.className = 'runChip';
+      const runNo = idx + 1;
+      const ms = Number(r.t_ms||r.t||0);
+      const cyc = (r.cycle ?? '–');
+      const dir = (r.dir ?? '').trim();
+      const dirTxt = dir ? (' · ' + dir) : '';
+      const tag = (r.tag ? String(r.tag).toUpperCase() : '');
+      const tagTxt = tag ? (' · ' + tag) : '';
+      btn.innerHTML =
+        '<div class="top">' +
+          '<div class="run">Run ' + runNo + '</div>' +
+          '<div class="ms">' + (Number.isFinite(ms)? Math.round(ms): '–') + ' ms</div>' +
+        '</div>' +
+        '<div class="meta">Cycle ' + cyc + dirTxt + tagTxt + '</div>';
+      btn.onclick = ()=>v5OpenRunDiagram(r.runId, 'Dauertest');
+      bHost.appendChild(btn);
+    });
+  }
+}
+
+function v5EnsureRunModal(){
+  let m = document.getElementById('v5RunModal');
+  if(m) return m;
+  m = document.createElement('div');
+  m.id = 'v5RunModal';
+  m.className = 'modal';
+  m.style.display = 'none';
+  m.innerHTML = `
+    <div class="modalBox" style="max-width: 980px;">
+      <div class="modalHeader">
+        <div>
+          <div class="modalTitle" id="v5RunModalTitle">Diagramm</div>
+          <div class="modalSub" id="v5RunModalSub">Angle über Zeit</div>
+        </div>
+        <button class="btn" id="v5RunModalClose">Schließen</button>
+      </div>
+      <div class="modalBody">
+        <canvas id="v5RunCanvas" width="900" height="420" style="width:100%; height:52vh; max-height:460px; background: #ffffff; border:1px solid #e5e7eb; border-radius: 12px;"></canvas>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.querySelector('#v5RunModalClose').onclick = ()=>{ m.style.display='none'; v5ActiveRunId = null; };
+  m.onclick = (e)=>{ if(e.target===m) m.style.display='none'; };
+  return m;
+}
+
+function v5DrawTraceOnCanvas(canvas, run, meta){
+  const ctx = canvas.getContext('2d');
+
+  // raw points from ESP32: [{t(ms), a(deg 0..360), v(0/1)}...]
+  const ptsRaw = (run && run.trace) ? run.trace : [];
+
+  // --- Angle normalization: convert wrapped 0..360 into a signed representation around BASE (0/90/180)
+  // This avoids the ugly vertical "jump" when the movement crosses 0°/360° (e.g. 359 -> 0).
+  const baseDeg = (meta && isFinite(Number(meta.BASE))) ? Number(meta.BASE) : 0;
+  const toSigned = (deg)=>{
+    // returns in range [-180..+180) relative to baseDeg
+    const x = ((deg - baseDeg + 540) % 360) - 180;
+    return x;
+  };
+  const pts = [];
+  if(ptsRaw.length){
+    // Robust unwrap on signed angles using shortest-arc delta.
+    // This preserves continuity without introducing per-point 360-shifts that create vertical lines.
+    const a0 = toSigned(ptsRaw[0].a);
+    let prevWrapped = a0;
+    let prevUnwrapped = a0;
+    pts.push({ t: ptsRaw[0].t, a: prevUnwrapped, v: ptsRaw[0].v });
+
+    const shortestDelta = (cur, prev)=>{
+      // returns delta in [-180..+180)
+      return ((cur - prev + 540) % 360) - 180;
+    };
+
+    for(let i=1;i<ptsRaw.length;i++){
+      const curWrapped = toSigned(ptsRaw[i].a);
+      const d = shortestDelta(curWrapped, prevWrapped);
+      const curUnwrapped = prevUnwrapped + d;
+      pts.push({ t: ptsRaw[i].t, a: curUnwrapped, v: ptsRaw[i].v });
+      prevWrapped = curWrapped;
+      prevUnwrapped = curUnwrapped;
+    }
+  }
+
+
+// --- Re-center unwrapped angles so the axis matches header END/TGT (avoid showing +360° shifted range)
+// We keep the "no jump" property, but shift the whole trace by ±360 so the last point is closest to END (or TGT).
+if(pts.length){
+  const anchorDeg = (run && isFinite(run.tgt)) ? Number(run.tgt)
+                  : (run && isFinite(run.end)) ? Number(run.end)
+                  : NaN;
+  if(isFinite(anchorDeg)){
+    const anchor = toSigned(anchorDeg);
+    const lastA = pts[pts.length-1].a;
+    const k = Math.round((anchor - lastA) / 360);
+    if(k){
+      const off = 360 * k;
+      for(let i=0;i<pts.length;i++) pts[i].a += off;
+    }
+  }
+}
+
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+
+  // ---- Layout ----
+  const padL = 56, padR = 14, padT = 18, padB = 34;
+  const x0 = padL, x1 = w - padR;
+  const y0 = padT, y1 = h - padB;
+
+  // ---- Background ----
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,w,h);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x0, y0, x1-x0, y1-y0);
+
+  // ---- Data bounds ----
+  let tMin=0, tMax=0, aMin=0, aMax=0;
+  if(pts.length){
+    tMin = pts[0].t; tMax = pts[pts.length-1].t;
+    aMin = pts[0].a; aMax = pts[0].a;
+    for(const p of pts){ if(p.a<aMin) aMin=p.a; if(p.a>aMax) aMax=p.a; }
+  } else {
+    // fallback bounds if no data yet
+    tMin = 0; tMax = 1000; aMin = 0; aMax = 100;
+  }
+
+  // pad + snap to 10° grid (wie besprochen)
+  const snapDown10 = (v)=> Math.floor(v/10)*10;
+  const snapUp10   = (v)=> Math.ceil(v/10)*10;
+  aMin = snapDown10(aMin - 10);
+  aMax = snapUp10(aMax + 10);
+  if(aMax - aMin < 20){ aMax = aMin + 20; }
+
+  // ---- Helpers ----
+  const X = (t)=> x0 + ((t - tMin) / (tMax - tMin || 1)) * (x1-x0);
+  const Y = (a)=> y1 - ((a - aMin) / (aMax - aMin || 1)) * (y1-y0);
+
+  // ---- Phase Overlay (DT): MOVE / POSTROLL / PAUSE ----
+  // DT: run.t_ms = Zeit bis Endlage (Schaltzeit). Danach 1000ms Postroll + Pause (PAUSE_S) im Trace.
+  const tSwitch = Number((run && (run.t_ms ?? run.t)) || 0);
+  const postrollMs = 1000;
+  const cfg = v5CfgDtByTestId[String(run && run.testId)] || null;
+  const pauseS = (cfg && Number.isFinite(cfg.pause_s)) ? cfg.pause_s : null;
+
+  function shade(xa, xb, fill){
+    if(!(Number.isFinite(xa) && Number.isFinite(xb))) return;
+    const a = Math.max(tMin, Math.min(xa, xb));
+    const b = Math.min(tMax, Math.max(xa, xb));
+    if(b <= a) return;
+    ctx.save();
+    // Sichtbarkeit leicht erhöht für bessere Erkennbarkeit (12% statt 8%)
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = fill;
+    ctx.fillRect(X(a), y0, X(b)-X(a), (y1-y0));
+    ctx.restore();
+  }
+
+  // Bedingung gelockert: Bereiche auch zeichnen, wenn die Messung genau bei tSwitch endet
+  if(Number.isFinite(tSwitch) && tSwitch > 0){
+    const actualSwitch = Math.min(tSwitch, tMax);
+    const tPostEnd = Math.min(actualSwitch + postrollMs, tMax);
+
+    // MOVE (Start exakt bei Datenbeginn tMin, nicht stur bei 0)
+    if (actualSwitch > tMin) shade(tMin, actualSwitch, '#2a74ff');
+
+    // POSTROLL
+    if(tPostEnd > actualSwitch + 5) shade(actualSwitch, tPostEnd, '#ffd23c');
+
+    // PAUSE (rest)
+    if(tMax > tPostEnd + 5) shade(tPostEnd, tMax, '#9aa4b2');
+
+    // Labels oben in den gezeichneten Flächen
+    ctx.save();
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+
+    if (actualSwitch > tMin) {
+      ctx.fillStyle = '#1d4ed8';
+      ctx.fillText('MOVE', X((tMin + actualSwitch) * 0.5), y0+6);
+    }
+
+    if(tPostEnd > actualSwitch + 10){
+      ctx.fillStyle = '#b45309';
+      ctx.fillText('POSTROLL 1.0s', X((actualSwitch + tPostEnd) * 0.5), y0+6);
+    }
+
+    if(tMax > tPostEnd + 10){
+      ctx.fillStyle = '#6b7280';
+      const pTxt = pauseS !== null ? `PAUSE ${pauseS}s` : 'PAUSE';
+      ctx.fillText(pTxt, X((tPostEnd + tMax) * 0.5), y0+6);
+    }
+    ctx.restore();
+  }
+
+// ---- Grid ----
+  ctx.strokeStyle = '#e5e7eb';
+  ctx.lineWidth = 1;
+
+  // horizontal grid every 10°
+  for(let a = aMin; a <= aMax; a += 10){
+    const yy = Y(a);
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x0,yy); ctx.lineTo(x1,yy); ctx.stroke();
+
+    // labels
+    ctx.fillStyle = '#111827';
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(a.toFixed(0) + '°', x0-8, yy);
+  }
+
+  // vertical grid: 10 divisions
+  const div = 10;
+  for(let i=0;i<=div;i++){
+    const tt = tMin + (i/div)*(tMax-tMin);
+    const xx = X(tt);
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(xx,y0); ctx.lineTo(xx,y1); ctx.stroke();
+
+    ctx.fillStyle = '#111827';
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(Math.round(tt) + ' ms', xx, y1+6);
+  }
+
+  // frame
+  ctx.strokeStyle = '#9ca3af';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([]);
+  ctx.strokeRect(x0, y0, x1-x0, y1-y0);
+
+  // ---- Overlays: Endlagen (A/B) + Target + Switch-time ----
+  const drawH = (a, color, dash, label)=>{
+    if(!isFinite(a)) return;
+    const yy = Y(a);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.setLineDash(dash||[]);
+    ctx.beginPath(); ctx.moveTo(x0,yy); ctx.lineTo(x1,yy); ctx.stroke();
+    if(label){
+      ctx.setLineDash([]);
+      ctx.fillStyle = color;
+      ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(label + ' ' + a.toFixed(1) + '°', x0+6, yy-2);
+    }
+  };
+
+  // align overlay angles (A/B/TGT) to the same unwrapped/signed space as the trace
+  const alignAngle = (deg)=>{
+    if(!isFinite(deg)) return NaN;
+    let a = toSigned(Number(deg));
+    // bring 'a' close to the trace range (avoid being 360° off)
+    while(a < aMin - 90) a += 360;
+    while(a > aMax + 90) a -= 360;
+    return a;
+  };
+
+  if(meta){
+    if(isFinite(meta.A)) drawH(alignAngle(meta.A), '#00c8dc', [6,4], 'A');
+    if(isFinite(meta.B)) drawH(alignAngle(meta.B), '#00c8dc', [6,4], 'B');
+  }
+  if(run && isFinite(run.tgt)){
+    drawH(alignAngle(run.tgt), '#ff9c2c', [2,4], 'TGT');
+  }
+
+  // switch-time marker (senkrechte Linie bei t_ms)
+  if(run && isFinite(run.t_ms) && run.t_ms>0){
+    const xx = X(run.t_ms);
+    ctx.strokeStyle = '#ffd23c';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(xx,y0); ctx.lineTo(xx,y1); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffd23c';
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('t_switch ' + Math.round(run.t_ms) + 'ms', Math.min(xx+6, x1-90), y0+4);
+  }
+
+  // valve band (unten, in Plot)
+  if(run && run.valve){
+    const on = (String(run.valve).toUpperCase() === 'ON');
+    const yy = y1 - 6; // near x-axis inside plot
+    ctx.strokeStyle = on ? '#27cb77' : '#f44336';
+    ctx.lineWidth = 5;
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x0+2,yy); ctx.lineTo(x1-2,yy); ctx.stroke();
+    ctx.fillStyle = '#111827';
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('Ventil ' + (on?'ON':'OFF'), x1-4, yy-6);
+  }
+
+  
+  // ---- Valve step (gelb, 0/1) ----
+  // Zeichnet das Ventil-Signal als Treppenfunktion innerhalb des Plotbereichs (unten)
+  // yLow = 0, yHigh = 1
+  const yV0 = y1 - 12;
+  const yV1 = y1 - 44;
+  const YV = (v)=> (v ? yV1 : yV0);
+
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([]);
+  if(pts.length){
+    ctx.beginPath();
+    ctx.moveTo(X(pts[0].t), YV(pts[0].v));
+    for(let i=1;i<pts.length;i++){
+      const prev = pts[i-1], cur = pts[i];
+      const xPrev = X(prev.t), xCur = X(cur.t);
+      // horizontal until next time
+      ctx.lineTo(xCur, YV(prev.v));
+      // vertical jump if changed
+      if(cur.v !== prev.v){
+        ctx.lineTo(xCur, YV(cur.v));
+      }
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = '#111827';
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('Ventil (0/1)', x0+6, yV1-4);
+  }
+
+
+  // ---- Trace ----
+  if(!pts.length) return;
+
+  ctx.strokeStyle = '#18a0ff';
+  ctx.lineWidth = 2.25;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(X(pts[0].t), Y(pts[0].a));
+  for(let i=1;i<pts.length;i++){
+    ctx.lineTo(X(pts[i].t), Y(pts[i].a));
+  }
+  ctx.stroke();
+
+  // points (sparsam)
+  ctx.fillStyle = '#18a0ff';
+  const step = Math.max(1, Math.floor(pts.length / 60)); // max ~60 Punkte sichtbar
+  for(let i=0;i<pts.length;i+=step){
+    const xx = X(pts[i].t), yy = Y(pts[i].a);
+    ctx.beginPath(); ctx.arc(xx,yy,2.2,0,Math.PI*2); ctx.fill();
+  }
+}
+
+
+
+function v5ResizeCanvasToDisplaySize(canvas){
+  if(!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const cssW = Math.max(1, Math.round(rect.width));
+  const cssH = Math.max(1, Math.round(rect.height));
+  const w = Math.round(cssW * dpr);
+  const h = Math.round(cssH * dpr);
+  if(canvas.width !== w || canvas.height !== h){
+    canvas.width = w;
+    canvas.height = h;
+  }
+}
+
+function v5OpenRunDiagram(runId, label){
+  // Prevent stacked/double modals: close any legacy demo modals first.
+  try{
+    const sm = document.getElementById('snapshotModal');
+    if(sm) sm.classList.add('hidden');
+    const tm = document.getElementById('timeChartModal');
+    if(tm) tm.classList.add('hidden');
+  }catch(e){}
+
+  const run = v5RunsById[String(runId)];
+  if(!run) return;
+  const m = v5EnsureRunModal();
+  const title = m.querySelector('#v5RunModalTitle');
+  const sub = m.querySelector('#v5RunModalSub');
+  title.textContent = `${label}: RUN ${runId}`;
+  const meta = v5MetaByTestId[String(run.testId)] || window.v5LastMeta || null;
+  const vTxt = run.valve ? String(run.valve).toUpperCase() : '';
+  const tgtTxt = (run.tgt!==undefined && run.tgt!==null) ? String(Number(run.tgt).toFixed(2)) : '';
+  sub.textContent = `TEST ${run.testId} · CYCLE ${run.cycle} · ${run.dir} · t=${run.t_ms}ms · END ${run.end}° · TGT ${tgtTxt}° · V ${vTxt} · ERR ${run.err}`;
+  const canvas = m.querySelector('#v5RunCanvas');
+  v5ActiveRunId = String(runId);
+  m.style.display = 'block';
+  // HiDPI + responsive: draw based on actual CSS size for sharp mobile rendering
+  requestAnimationFrame(()=>{
+    v5ResizeCanvasToDisplaySize(canvas);
+    v5DrawTraceOnCanvas(canvas, run, meta);
+  });
+}
+
+function v5OpenLatestRunFrom(list, label){
+  if(!list || !list.length) return;
+  const r = list[list.length-1]; // newest (we push in chronological order)
+  if(r && r.runId!=null) v5OpenRunDiagram(r.runId, label);
+}
+
+function v5HookSnapshotTitleClicks(){
+  // "Tippen für Zeit‑Diagramm" Texte in den zwei Snapshot-Karten klickbar machen:
+  //  - 1. Karte (tSnaps): Zeitmessung (letzter Run)
+  //  - 2. Karte (bSnaps): Dauertest (letzter Run aus LAST/MILE/FIRST)
+  const pillInfos = Array.prototype.slice.call(document.querySelectorAll('.pillInfo'));
+  pillInfos.forEach((el)=>{
+    const txt = (el.textContent||'').toLowerCase();
+    if(txt.indexOf('zeit') === -1 || txt.indexOf('diagram') === -1) return;
+
+    el.style.cursor = 'pointer';
+    el.title = 'Tippen: Diagramm öffnen';
+
+    // Entscheide anhand des nächsten Containers, welcher Bereich gemeint ist
+    const parentCard = el.closest && el.closest('.card');
+    const hasTime = parentCard && parentCard.querySelector && parentCard.querySelector('#tSnaps');
+    const hasBurn = parentCard && parentCard.querySelector && parentCard.querySelector('#bSnaps');
+
+    // Capture click to suppress older handlers that still open the demo chart modal.
+    el.addEventListener('click', (e)=>{
+      try{ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }catch(_e){}
+      if(hasTime){
+        v5OpenLatestRunFrom(v5TimeRuns, 'Zeitmessung');
+      } else if(hasBurn){
+        // newest aus den DT-Queues bestimmen
+        const cand = []
+          .concat(v5DtRuns.LAST.slice(-1))
+          .concat(v5DtRuns.MILE.slice(-1))
+          .concat(v5DtRuns.FIRST.slice(-1))
+          .filter(Boolean);
+        if(cand.length){
+          // nehme den zuletzt eingetroffenen mit größter runId/timestamp-Ähnlichkeit
+          let best = cand[0];
+          for(const r of cand){
+            if((r.runId ?? -1) > (best.runId ?? -1)) best = r;
+          }
+          if(best.runId!=null) v5OpenRunDiagram(best.runId, 'Dauertest');
+        }
+      }
+    }, true);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{ try{ v5HookSnapshotTitleClicks(); }catch(e){} });
+
+function receiveBleData(raw){
+  if(!raw) return;
+  String(raw).split('\n').forEach(function(line){
+    var s = (line || '').trim();
+    if(!s) return;
+
+    // 0) V5.6+: META / RUN / TRACE / SUM / CFG_DT / *_PROTO_* / SYNC_*
+// Firmware sends newline-terminated ASCII lines.
+// Important format updates vs older HTML:
+// - META;TYPE;testId;BASE=...;A=...;B=...;REF_A2B=...;REF_B2A=...;SAMP_A2B=...;SAMP_B2A=...
+// - TRACE;runId;I=0; t_ms,deg,valve; t_ms,deg,valve; ...   and TRACE;runId;END
+
+if(s.indexOf('META;') === 0){
+  const parts = s.split(';');
+  const type = (parts[1]||'').trim().toUpperCase();
+  const testId = Number(parts[2]||0)||0;
+  const kv = v5ParseKv(parts, 3);
+
+  // store meta for charts (overlays: Endlagen/Targets/Sampling)
+  if(testId){
+    v5MetaByTestId[testId] = {
+      type,
+      base: Number(kv.BASE||0),
+      A: Number(kv.A||0),
+      B: Number(kv.B||0),
+      refA2B: Number(kv.REF_A2B||0),
+      refB2A: Number(kv.REF_B2A||0),
+      sampA2B: Number(kv.SAMP_A2B||0),
+      sampB2A: Number(kv.SAMP_B2A||0),
+      ts: Date.now()
+    };
+  }
+
+  // Optional: show some meta in console/log
+  // (UI elements may not exist in every layout)
+  try{
+    const el = document.getElementById('metaLine');
+    if(el){
+      el.textContent = `META ${type} T${testId} | BASE=${kv.BASE||''} A=${kv.A||''} B=${kv.B||''} REF_A2B=${kv.REF_A2B||''} REF_B2A=${kv.REF_B2A||''}`;
+    }
+  }catch(e){}
+
+  // Backward-compat with older label names in this HTML
+  if(kv.CYCLES && document.getElementById('burnCyclesValue')) document.getElementById('burnCyclesValue').textContent = String(kv.CYCLES);
+  if(kv.PAUSE_S && document.getElementById('burnPauseValue')) document.getElementById('burnPauseValue').textContent = String(kv.PAUSE_S);
+  if(kv.ANG_TOL && document.getElementById('burnDevValue')) document.getElementById('burnDevValue').textContent = `±${kv.ANG_TOL}°`;
+  return;
+}
+
+if(s.indexOf('CFG_DT;') === 0){
+  // CFG_DT;testId;CYCLES=...;PAUSE_S=...;ANG_TOL=...;TIME_TOL_S=...;REF_A2B=...;REF_B2A=...
+  const parts = s.split(';');
+  const testId = Number(parts[1]||0)||0;
+  const kv = v5ParseKv(parts, 2);
+
+  // Merken für Diagramm-Overlays (MOVE / POSTROLL / PAUSE)
+  try{
+    if(testId){
+      v5CfgDtByTestId[String(testId)] = {
+        cycles: Number(kv.CYCLES||NaN),
+        pause_s: Number(kv.PAUSE_S||NaN),
+        ang_tol: Number(kv.ANG_TOL||NaN),
+        time_tol_s: Number(kv.TIME_TOL_S||NaN),
+        refA2B: Number(kv.REF_A2B||NaN),
+        refB2A: Number(kv.REF_B2A||NaN),
+        ts: Date.now()
+      };
+    }
+  }catch(e){}
+
+  // Optional: mirror to existing DT settings UI if present
+  if(kv.CYCLES && document.getElementById('burnCyclesValue')) document.getElementById('burnCyclesValue').textContent = String(kv.CYCLES);
+  if(kv.PAUSE_S && document.getElementById('burnPauseValue')) document.getElementById('burnPauseValue').textContent = String(kv.PAUSE_S);
+  if(kv.ANG_TOL && document.getElementById('burnDevValue')) document.getElementById('burnDevValue').textContent = `±${kv.ANG_TOL}°`;
+
+  // Wenn ein neuer DT-Test konfiguriert wird: Progress/Anzeige zurücksetzen
+  try{
+    if(testId){
+      // burnCyc zählt in dieser HTML als "absolvierte Zyklen" für die Anzeige im Zyklen-Kasten.
+      burnCyc = 0;
+      // Max-Zyklen ggf. aus CFG übernehmen (wenn vorhanden)
+      if(kv.CYCLES && document.getElementById('burnCyclesValue')){
+        const el = document.getElementById('burnCyclesValue');
+        el.dataset.value = String(kv.CYCLES);
+        el.textContent = String(kv.CYCLES);
+      }
+      onBurnConfigChange();
+    }
+  }catch(e){}
+  return;
+}
+
+if(s.indexOf('TIME_PROTO_BEGIN;')===0 || s.indexOf('TIME_PROTO_END;')===0 ||
+   s.indexOf('DT_PROTO_BEGIN;')===0   || s.indexOf('DT_PROTO_END;')===0   ||
+   s.indexOf('SYNC_BEGIN;')===0      || s.indexOf('SYNC_END;')===0       ||
+   s.indexOf('SYNC_TIME;')===0       || s.indexOf('SYNC_DT_LAST;')===0   || s.indexOf('SYNC_DT_PROTO;')===0){
+  // Only informational; keep for debug/log
+  try{
+    const el = document.getElementById('log');
+    if(el){
+      el.value += s + "\n";
+      el.scrollTop = el.scrollHeight;
+    }
+  }catch(e){}
+  return;
+}
+
+if(s.indexOf('RUN;') === 0){
+  const parts = s.split(';');
+  // RUN;testId;runId;CYCLE=...;DIR=...;T_MS=...;END=...;ERR=...;TAG=...
+  const testId = Number(parts[1]||0)||0;
+  const runId  = String(parts[2]||'').trim();
+  const kv = v5ParseKv(parts, 3);
+
+  const cycle = Number((kv.CYCLE||'').replace(/\D+/g,'')) || 0;
+  const dir = (kv.DIR||'').toUpperCase();
+  const t_ms = Number(kv.T_MS||0)||0;
+  const end = Number(kv.END||0)||0;
+  const tgt = Number(kv.TGT||0)||0;
+  const valve = String(kv.V||'').toUpperCase();
+  const err = (kv.ERR||'0');
+  const tag = (kv.TAG||'').toUpperCase();
+
+  const run = { testId, runId, cycle, dir, t_ms, end, tgt, valve, err, tag, trace: [] };
+  v5RunsById[runId] = run;
+
+  // Einsortieren: cycle==0 -> TIME single run; otherwise DT
+  if(cycle === 0){ 
+    v5PushTimeRun(run); 
+  } else { 
+    v5PushDtRun(run); 
+
+    // ---- DT Progress (Zyklen X/Y + Balken) ----
+    // cycle entspricht im Sketch dem "Zyklus" (1..N). Wir nehmen den größten gesehenen Wert.
+    try{
+      if(Number.isFinite(cycle) && cycle > 0){
+        burnCyc = Math.max(burnCyc || 0, cycle);
+      }
+      // Letzter Schaltvorgang: aus RUN Header
+      if(Number.isFinite(t_ms) && t_ms > 0) lastSwitchTime = t_ms;
+      // Max. Abweichung: |END - TGT| (Winkelabstand 0..180)
+      const dev = burnAngleDistDeg(Number(end), Number(tgt));
+      if(Number.isFinite(dev)) maxDeviation = dev;
+      // Aktueller Winkel (optional)
+      if(Number.isFinite(end)) burnCurrentAngle = end;
+
+      updateBurnUi();
+    }catch(e){}
+
+    // Fehlerkarte nur bei DT-Fehlern anzeigen (ERR != 0)
+    try{ burnShowErrorFromRun(run); }catch(e){}
+  }
+  return;
+}
+
+if(s.indexOf('TRACE;') === 0){
+  const parts = s.split(';');
+  const runId = String(parts[1]||'').trim();
+
+  // TRACE;runId;END
+  if(parts[2] && parts[2].toUpperCase()==='END'){
+    const run = v5RunsById[runId];
+    const pend = v5PendingTrace[runId];
+    if(run && pend){
+      // ensure sorted
+      pend.points.sort((a,b)=>a.t-b.t);
+      run.trace = pend.points;
+    }
+    // redraw if modal currently shows this run
+    try{
+      if(v5ActiveRunId !== null && String(v5ActiveRunId) === String(runId)){
+        const canvas = document.getElementById('v5RunCanvas');
+        if(canvas && run){
+          const meta = v5MetaByTestId[String(run.testId)] || window.v5LastMeta || null;
+          // keep it sharp on mobile after async trace arrival
+          try{ v5ResizeCanvasToDisplaySize(canvas); }catch(e){}
+          v5DrawTraceOnCanvas(canvas, run, meta);
+        }
+      }
+    }catch(e){}
+    delete v5PendingTrace[runId];
+    return;
+  }
+
+  // New format: TRACE;runId;I=0; t,deg; t,deg; ...
+  // Older format (kept): TRACE;runId;PART;pi/parts; t,a; ...
+  if(parts[2] && parts[2].toUpperCase()==='PART'){
+    // legacy handling
+    if(parts.length < 5) return;
+    const partInfo = (parts[3]||'0/0').split('/');
+    const pi = Number(partInfo[0]||0)||0;
+    const pN = Number(partInfo[1]||0)||0;
+    if(!v5PendingTrace[runId]) v5PendingTrace[runId] = { parts: pN, got: new Set(), points: [] };
+    const pend = v5PendingTrace[runId];
+    pend.parts = pN || pend.parts;
+    if(pend.got.has(pi)) return;
+    pend.got.add(pi);
+    for(let i=4;i<parts.length;i++){
+      const pair = (parts[i]||'').trim();
+      if(!pair) continue;
+      const c = pair.split(',');
+      if(c.length<2) continue;
+      const t = parseFloat(c[0]);
+      const a = parseFloat(c[1]);
+      if(!Number.isFinite(t) || !Number.isFinite(a)) continue;
+      pend.points.push({ t: t, a: a, v: 0 });
+    }
+    pend.points.sort((a,b)=>a.t-b.t);
+    return;
+  } else {
+    // new "I=" format
+    if(parts.length < 4) return;
+    const iPart = (parts[2]||'').trim(); // "I=0"
+    const m = iPart.match(/I\s*=\s*(\d+)/i);
+    const startIdx = m ? Number(m[1]) : 0;
+
+    if(!v5PendingTrace[runId]) v5PendingTrace[runId] = { points: [], got: new Set() };
+    const pend = v5PendingTrace[runId];
+
+    // prevent duplicates per I index
+    if(pend.got.has(startIdx)) return;
+    pend.got.add(startIdx);
+
+    for(let i=3;i<parts.length;i++){
+      const pair = (parts[i]||'').trim();
+      if(!pair) continue;
+      const c = pair.split(',');
+      if(c.length<2) continue;
+      const t = parseFloat(c[0]);
+      const a = parseFloat(c[1]);
+      if(!Number.isFinite(t) || !Number.isFinite(a)) continue;
+      const vv = (c.length>=3 ? (parseInt(c[2],10) || 0) : 0);
+      pend.points.push({ t: t, a: a, v: vv });
+    }
+    // sort later at END
+    return;
+  }
+}
+
+if(s.indexOf('SUM;') === 0){
+  // SUM;testId;TYPE=...;CODE=...;MSG=...
+  try{
+    const el = document.getElementById('log');
+    if(el){
+      el.value += s + "\n";
+      el.scrollTop = el.scrollHeight;
+    }
+  }catch(e){}
+  return;
+}
+
+// 1) Alt: TIME_ / BURN_ (kompatibel lassen)
+
+    // 1) Alt: TIME_ / BURN_ (kompatibel lassen)
+    if(s.indexOf('TIME_') === 0){
+      processTimePayload(s);
+      return;
+    }
+    if(s.indexOf('BURN_') === 0){
+      processBurnPayload(s);
+      return;
+    }
+
+    // 2) Neu: CHUNK;TYPE;...  (kompatibel, ohne UI umzubauen)
+    if(s.indexOf('CHUNK;') === 0){
+      processChunkPayload(s);
+      return;
+    }
+  });
+}
+
+function processChunkPayload(line){
+  // Erwartet z.B.:
+  // CHUNK;TIME;TIME_RESULT;333;86;6.0
+  // CHUNK;DT;BURN_STATUS;...
+  // oder: CHUNK;TIME_... / CHUNK;BURN_... (legacy inside)
+  var parts = line.split(';');
+  if(parts.length < 2) return;
+
+  // Falls direkt ein TIME_/BURN_ nach CHUNK kommt
+  if(parts[1] && parts[1].indexOf('TIME_')===0){
+    processTimePayload(parts.slice(1).join(';'));
+    return;
+  }
+  if(parts[1] && parts[1].indexOf('BURN_')===0){
+    processBurnPayload(parts.slice(1).join(';'));
+    return;
+  }
+
+  // Schema: CHUNK;TYPE;PAYLOAD...
+  // TYPE kann TIME oder DT sein, PAYLOAD kann TIME_*/BURN_* sein
+  if(parts.length >= 3){
+    var payload = parts.slice(2).join(';');
+    if(payload.indexOf('TIME_')===0){
+      processTimePayload(payload);
+      return;
+    }
+    if(payload.indexOf('BURN_')===0){
+      processBurnPayload(payload);
+      return;
+    }
+  }
+  // Unbekannt: ignorieren (damit nichts anderes kaputt geht)
+}
+
+// Kleiner Simulations-Eingang (nur im Browser): erlaubt Test ohne echtes ESP32
+(function addSimControls(){
+  try{
+    var footer = document.getElementById('footer');
+    if(!footer) return;
+    var wrapper = document.createElement('div');
+    wrapper.style.marginTop = '10px';
+    wrapper.innerHTML = '<div style="display:flex;gap:8px;align-items:center">'+
+      '<input id="simBleInput" placeholder="ESP32-String, z.B. TIME_RESULT;333;86;6.0" style="flex:1;padding:8px;border-radius:8px;border:1px solid #cdd9e5;background:var(--input-bg);color:var(--input-ink)">'+
+      '<button id="simBleBtn" class="btn">Senden</button>'+
+    '</div>';
+    footer.appendChild(wrapper);
+    var btn = document.getElementById('simBleBtn');
+    var inp = document.getElementById('simBleInput');
+    if(btn && inp){
+      btn.addEventListener('click', function(){
+        var v = inp.value || '';
+        if(v) receiveBleData(v);
+      });
+    }
+  }catch(e){
+    console.warn('SimControls failed', e);
+  }
+})();
+
+// Bilder
+const fileCam=document.getElementById('fileCamera');const fileGal=document.getElementById('fileGallery');
+document.getElementById('openCamera').addEventListener('click',()=>fileCam.click());
+document.getElementById('openGallery').addEventListener('click',()=>fileGal.click());
+
+const uploader=document.getElementById('uploader');const addInfo=document.getElementById('addInfo');
+const PHOTOS_TIME_KEY='pb_photos_time_v1';
+const PHOTOS_BURN_KEY='pb_photos_burn_v1';
+let images=[]; // aktuell angezeigte Bilder (je nach Modus)
+let currentPhotoMode='time'; // 'time' oder 'burn'
+
+// von außen aufrufbar, um Modus umzuschalten (z.B. aus showView)
+function setPhotoMode(mode){
+  const m = (mode==='burn') ? 'burn' : 'time';
+  if(currentPhotoMode===m) return;
+  currentPhotoMode = m;
+  loadPhotosForCurrentMode();
+}
+
+function getPhotosKey(){
+  return currentPhotoMode==='burn' ? PHOTOS_BURN_KEY : PHOTOS_TIME_KEY;
+}
+
+function savePhotos(){
+  try{
+    const key = getPhotosKey();
+    const data = images.slice(0,4).map(it=>it.dataUrl||it.url||'');
+    localStorage.setItem(key, JSON.stringify(data));
+  }catch(e){ /* ignorieren, falls Quota */ }
+}
+
+function loadPhotosForCurrentMode(){
+  const key = getPhotosKey();
+  try{
+    const arr = JSON.parse(localStorage.getItem(key)||'[]');
+    images = arr.map(u=>({url:u, dataUrl:u}));
+  }catch(e){ images=[]; }
+  renderThumbs();
+}
+
+// Initial: Zeitmessungs-Bilder laden (Standard-Modus)
+(function(){ loadPhotosForCurrentMode(); })();
+
+async function fileToDataURL(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file);
+  });
+}
+
+[fileCam,fileGal].forEach(inp=>{inp.addEventListener('change',async e=>{
+  const files=Array.from(e.target.files||[]);
+  for(const f of files){
+    if(images.length>=4) break;
+    try{
+      const dataUrl = await fileToDataURL(f);
+      images.push({url:dataUrl, dataUrl});
+    }catch(_){ /* ignore */ }
+  }
+  renderThumbs(); savePhotos();
+  inp.value='';
+  try{window.history.replaceState(null,'',window.location.href);}catch(_){}
+})});
+
+function renderThumbs(){
+  uploader.querySelectorAll('.thumb').forEach(el=>el.remove());
+  images.forEach((img,idx)=>{
+    const wrap=document.createElement('div');
+    wrap.className='thumb';
+    wrap.innerHTML=`<img src="${img.url}" alt="Bild ${idx+1}"><button onclick="removeImg(${idx})">✕</button>`;
+    uploader.insertBefore(wrap,addInfo);
+  });
+  addInfo.style.display=images.length>=4?'none':'flex';
+}
+function removeImg(idx){
+  images.splice(idx,1);
+  renderThumbs(); savePhotos();
+}
+renderThumbs();
+
+
+
+// ---------- NEU: IndexedDB für große Artikellisten ----------
+const DB_NAME='pb_store_v1'; const STORE='kv';
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB_NAME,1); r.onupgradeneeded=()=>{ r.result.createObjectStore(STORE); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function idbSet(key,val){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(val,key); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+async function idbGet(key){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readonly'); const req=tx.objectStore(STORE).get(key); req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); }); }
+async function idbDel(key){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).delete(key); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+
+// Artikelliste (nur Home) + Datalist
+let articleMap={};
+function setListInfo(){const n=Object.keys(articleMap).length;const txt=n?(n+' Artikel gespeichert'):'Keine Liste geladen';const ih=document.getElementById('listInfoHome');if(ih)ih.textContent=txt}
+async function saveList(){ await idbSet('article_map', articleMap); setListInfo(); fillDatalist(); updateDescs();
+  const elPartner=document.getElementById('f_burn_partner'); if(elPartner){ elPartner.addEventListener('input', function(){ try{updateDescs();}catch(e){} }); setTimeout(function(){ try{updateDescs();}catch(e){} }, 0);} }
+async function loadList(){ try{ articleMap = (await idbGet('article_map')) || {}; }catch(e){ articleMap={}; } setListInfo(); fillDatalist(); updateDescs(); }
+async function clearList(){ articleMap={}; await idbDel('article_map'); await saveList(); }
+
+function wireHome(){const btnL=document.getElementById('btnLoadHome');const btnC=document.getElementById('btnClearHome');const inp=document.getElementById('listFileHome');if(btnC)btnC.addEventListener('click',()=>clearList());if(btnL)btnL.addEventListener('click',()=>inp&&inp.click());if(inp)inp.addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const lower=f.name.toLowerCase();if(lower.endsWith('.json')){const text=await f.text();const data=JSON.parse(text);if(Array.isArray(data)){data.forEach(row=>addRow(row))}else{Object.entries(data).forEach(([k,v])=>addRow({artikelnummer:k,kurzbezeichnung:v}))}}else if(lower.endsWith('.xlsx')){alert('XLSX aktuell deaktiviert – bitte JSON laden.');}else{alert('Nur .json oder .xlsx erlaubt.')}await saveList()}catch(err){alert('Konnte Liste nicht laden: '+err.message)}e.target.value=''})}
+function addRow(row){if(!row)return;const keys=Object.keys(row).reduce((a,k)=>{a[k.toLowerCase().trim()]=row[k];return a},{});const nr=(keys['artikelnummer']||keys['artikelnr']||keys['nr']||'').toString().trim();const bez=(keys['kurzbezeichnung']||keys['bezeichnung']||keys['name']||'').toString().trim();if(nr){articleMap[nr]=bez}}
+function parseCSV(text){/* nicht nötig in dieser Version */}
+function fillDatalist(){const dl=document.getElementById('dl_artikel');if(!dl)return;dl.innerHTML='';let i=0;for(const nr of Object.keys(articleMap)){if(i++>=300)break;const opt=document.createElement('option');opt.value=nr;opt.label=articleMap[nr]||'';dl.appendChild(opt)}}
+wireHome();loadList();
+
+// Stammdaten Zeitmessung persistieren + Kurzbez. (weiter mit localStorage)
+const fields=[['f_antrieb','d_antrieb','meta_time_antrieb'],['f_magnetventil','d_magnetventil','meta_time_magnetventil'],['f_schalldaempfer','d_schalldaempfer','meta_time_schalldaempfer'],['f_rohr','d_rohr','meta_time_rohr'],['f_klappe','d_klappe','meta_time_klappe'],['f_kuerzel',null,'meta_time_kuerzel']];
+function attachMeta(){fields.forEach(([fid,did,key])=>{const inp=document.getElementById(fid);if(!inp)return;const desc=did?document.getElementById(did):null;inp.value=localStorage.getItem(key)||'';const upd=()=>{localStorage.setItem(key,inp.value.trim());if(desc){const v=inp.value.trim();desc.textContent=getKurzTextForArtNr(v)}};inp.addEventListener('input',upd);inp.addEventListener('change',upd);upd()})}
+attachMeta();
+
+// Stammdaten Burn (Antrieb+Kürzel) persistieren
+const burnFields=[['f_burn_antrieb','d_burn_antrieb','meta_burn_antrieb'],['f_burn_kuerzel',null,'meta_burn_kuerzel']];
+function attachBurn(){burnFields.forEach(([fid,did,key])=>{const inp=document.getElementById(fid);if(!inp)return;const desc=did?document.getElementById(did):null;inp.value=localStorage.getItem(key)||'';const upd=()=>{localStorage.setItem(key,inp.value.trim());if(desc){const v=inp.value.trim();desc.textContent=getKurzTextForArtNr(v)}};inp.addEventListener('input',upd);inp.addEventListener('change',upd);upd()})}
+attachBurn();
+// --- Seriennummer speichern ---
+(function(){
+  const pairs=[['f_seriennr','meta_f_seriennr'],['f_burn_seriennr','meta_f_burn_seriennr']];
+  pairs.forEach(([id,key])=>{
+    const inp=document.getElementById(id); if(!inp)return;
+    inp.value=localStorage.getItem(key)||'';
+    const upd=()=>localStorage.setItem(key,inp.value.trim());
+    inp.addEventListener('input',upd);
+    inp.addEventListener('change',upd);
+  });
+})();
+
+
+// Zentrale Kurzbezeichnungssuche für alle Artikelnummer-Felder
+function getKurzTextForArtNr(v){
+  if(!v) return '';
+  if(typeof articleMap!=='undefined' && articleMap && articleMap[v]){
+    return 'Kurzbezeichnung: '+articleMap[v];
+  }
+  if(window.knownArticles && window.knownArticles[v]){
+    return 'Kurzbezeichnung: '+window.knownArticles[v];
+  }
+  return '';
+}
+
+function updateDescs(){
+  const pairs=[['f_antrieb','d_antrieb'],['f_magnetventil','d_magnetventil'],['f_schalldaempfer','d_schalldaempfer'],['f_rohr','d_rohr'],['f_klappe','d_klappe'],['f_burn_antrieb','d_burn_antrieb'],['f_burn_partner','d_burn_partner']];
+  pairs.forEach(([f,d])=>{const inp=document.getElementById(f);const desc=document.getElementById(d);if(inp&&desc){const v=inp.value.trim();desc.textContent=getKurzTextForArtNr(v)}});
+}
+// --- NEU: Kurzbezeichnung für Klappe/Kugelhahn im Dauertest live aktualisieren ---
+(function syncBurnPartner(){
+  const inp  = document.getElementById('f_burn_partner');
+  const desc = document.getElementById('d_burn_partner');
+  if(!inp || !desc) return;
+  const upd = ()=> {
+    const v = (inp.value || '').trim();
+    desc.textContent = articleMap && articleMap[v] ? ('Kurzbezeichnung: ' + articleMap[v]) : '';
+  };
+  inp.addEventListener('input', upd);
+  inp.addEventListener('change', upd);
+  upd();
+})();
+
+
+// --- NEU: Antriebs-Artikelnummer zwischen Zeitmessung und Dauertest synchronisieren ---
+(function syncAntrieb(){
+  const t = document.getElementById('f_antrieb');
+  const b = document.getElementById('f_burn_antrieb');
+  const td = document.getElementById('d_antrieb');
+  const bd = document.getElementById('d_burn_antrieb');
+  if(!t || !b) return;
+
+  // Initial: wenn eins gesetzt ist, übernehme ins andere
+  const tv = (t.value||'').trim();
+  const bv = (b.value||'').trim();
+  const prefer = tv || bv;
+  if(prefer){
+    t.value = prefer; b.value = prefer;
+    localStorage.setItem('meta_time_antrieb', prefer);
+    localStorage.setItem('meta_burn_antrieb', prefer);
+    if(td) td.textContent = articleMap[prefer]?('Kurzbezeichnung: '+articleMap[prefer]):'';
+    if(bd) bd.textContent = articleMap[prefer]?('Kurzbezeichnung: '+articleMap[prefer]):'';
+  }
+
+  const apply = (val)=>{
+    const v = (val||'').trim();
+    t.value = v; b.value = v;
+    localStorage.setItem('meta_time_antrieb', v);
+    localStorage.setItem('meta_burn_antrieb', v);
+    if(td) td.textContent = articleMap[v]?('Kurzbezeichnung: '+articleMap[v]):'';
+    if(bd) bd.textContent = articleMap[v]?('Kurzbezeichnung: '+articleMap[v]):'';
+  };
+
+  t.addEventListener('input', ()=>apply(t.value));
+  t.addEventListener('change', ()=>apply(t.value));
+  b.addEventListener('input', ()=>apply(b.value));
+  b.addEventListener('change', ()=>apply(b.value));
+})();
+
+// --- Nur Ziffern für Artikelnr.-Felder (numeric keypad) ---
+['f_antrieb','f_magnetventil','f_schalldaempfer','f_rohr','f_burn_antrieb'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('beforeinput', (e)=>{
+    if(e.data && /[^\d]/.test(e.data)) e.preventDefault();
+  });
+  el.addEventListener('input', ()=>{
+    const v=el.value.replace(/[^\d]/g,'');
+    if(v!==el.value) el.value=v;
+  });
+  el.addEventListener('paste', (e)=>{
+    e.preventDefault();
+    const text=(e.clipboardData||window.clipboardData).getData('text')||'';
+    const digits=text.replace(/[^\d]/g,'');
+    document.execCommand('insertText', false, digits);
+  });
+});
+
+// --- Bemerkungen speichern (pro Modus) ---
+(function(){
+  const pairs=[['f_notes_time','meta_notes_time'],['f_notes_burn','meta_notes_burn']];
+  pairs.forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.value = localStorage.getItem(key)||'';
+    const save=()=>localStorage.setItem(key, el.value);
+    el.addEventListener('input', save);
+    el.addEventListener('change', save);
+  });
+})();
+
+
+// (removed duplicate renderTimes)
+function updateCurrentTimeDisplay(){
+  const ms = times.length ? times[times.length-1] : 0;
+  const sec = ms/1000;
+  const secStr = sec.toFixed(4).replace('.',',');
+  const msStr = ms.toFixed(1).replace('.',',');
+  const elSec = document.getElementById('tCurrentSec');
+  const elMs  = document.getElementById('tCurrentMs');
+  if(elSec) elSec.textContent = secStr;
+  if(elMs)  elMs.textContent  = msStr;
+}
+
+
+window.knownArticles = Object.assign({"10002987":"DN200 EPDM-H"}, window.knownArticles||{});
+</script>
+
+<script>
+// Tiny tap feedback: add class on pointerdown, remove on pointerup
+(function(){
+  document.addEventListener('pointerdown', e=>{
+    const t=e.target.closest('.tile'); if(!t) return; t.classList.add('press');
+    setTimeout(()=>t.classList.remove('press'), 180);
+  }, {passive:true});
+})();
+</script>
+<style>
+.tile.press{transform:scale(.985);}
+.ta::placeholder{color:var(--input-ph);} 
+.editable{cursor:pointer;}
+</style>
+
+
+<script>
+// Dauertest-Konfiguration direkt antippbar machen (Zyklen, Pause, Abweichung)
+document.addEventListener('DOMContentLoaded', function () {
+  function makeConfigEditable(id, suffix, parseAsInt) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', function () {
+      var current = el.dataset.value || '';
+      var input = window.prompt('Neuer Wert:', current);
+      if (input === null) return;
+
+      var val = input.trim();
+      if (parseAsInt) {
+        var num = parseInt(val.replace(/[^0-9-]/g,''), 10);
+        if (isNaN(num)) return;
+        val = num.toString();
+      }
+      el.dataset.value = val;
+      el.textContent = suffix ? (val + suffix) : val;
+
+      // Nach Änderung: Anzeige und Max-Zyklen aktualisieren
+      if (typeof onBurnConfigChange === 'function') {
+        onBurnConfigChange();
+      }
+    
+  const elPartner = document.getElementById('f_burn_partner'); if(elPartner){ elPartner.addEventListener('input', function(){ try{ updateDescs(); }catch(e){} });
+
+// Dedicated binder for partner field (independent of updateDescs)
+(function(){
+  function getKurz(v){
+    if(!v) return '';
+    if (typeof articleMap !== 'undefined' && articleMap[v]) return 'Kurzbezeichnung: ' + articleMap[v];
+    if (window.knownArticles && window.knownArticles[v]) return 'Kurzbezeichnung: ' + window.knownArticles[v];
+    return '';
+  }
+  function bindPartner(){
+    var inp  = document.getElementById('f_burn_partner');
+    var desc = document.getElementById('d_burn_partner');
+    if(!inp || !desc) return;
+    var apply = function(){
+      var v   = (inp.value || '').trim();
+      var txt = getKurz(v);
+
+      // Fallback: wenn im Zeitmessungs-Formular bereits eine Klappe mit derselben
+      // Artikelnummer + Kurzbezeichnung eingetragen wurde, diese übernehmen
+      if(!txt){
+        var tInp  = document.getElementById('f_klappe');
+        var tDesc = document.getElementById('d_klappe');
+        if(tInp && tDesc && (tInp.value || '').trim() === v){
+          txt = (tDesc.textContent || '').trim();
+        }
+      }
+      desc.textContent = txt;
+    };
+    ['input','change','blur'].forEach(function(evt){ inp.addEventListener(evt, apply); });
+    setTimeout(apply, 0);
+  }
+  bindPartner();
+})();
+
+
+
+function bindDescAuto(fieldId){
+  const el=document.getElementById(fieldId);
+  if(!el) return;
+  ['input','change','blur'].forEach(evt=>{
+    el.addEventListener(evt, function(){ try{ updateDescs(); }catch(e){} });
+  });
+  // initial fill
+  setTimeout(function(){ try{ updateDescs(); }catch(e){} }, 0);
+}
+
+bindDescAuto('f_burn_partner');
+ setTimeout(function(){ try{ updateDescs(); }catch(e){} }, 0); }
+});
+  }
+
+  makeConfigEditable('burnCyclesValue', '', true);   // Zyklen Soll
+  makeConfigEditable('burnPauseValue', ' ms', true); // Pause zwischen Zyklen
+  makeConfigEditable('burnDeviationValue', '°', true); // Abweichung (Stopp bei)
+
+  // Initial einmal anwenden, damit Max-Wert/Progress zur Konfiguration passen
+  if (typeof onBurnConfigChange === 'function') {
+    onBurnConfigChange();
+  }
+});
+</script>
+
+
+
+
+<style>
+.snapshot-modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:2000;}
+.snapshot-modal.hidden{display:none;}
+.snapshot-modal-box{background:#ffffff;border-radius:16px;padding:16px;width:90%;max-width:420px;box-shadow:0 12px 30px rgba(15,23,42,.35);}
+.snapshot-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:600;font-size:16px;color:#0f172a;}
+.snapshot-modal-header button{border:none;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:#64748b;}
+.snapshot-modal-header button:active{transform:scale(.96);}
+.snapshot-modal-sub{font-size:12px;color:#6b7280;margin-bottom:6px;}
+</style>
+
+<script>
+(function(){
+  const burnSnapContainer = document.getElementById('bSnaps');
+  const MAX_SNAPS = 10;
+
+  // NOTE:
+  // In der "v5"-Variante werden unter #bSnaps interaktive Run-Kacheln (Buttons .runChip)
+  // gerendert, die direkt das Trace-Diagramm (v5RunModal) öffnen.
+  // Dieser ältere Snapshot-Chart-Modal-Code war ursprünglich für einfache .pill-Elemente
+  // gedacht und würde sonst die onclick-Handler der Run-Kacheln überschreiben.
+  // Daher: nur aktiv werden, wenn KEINE .runChip Buttons vorhanden sind.
+  function hasRunChips(){
+    return burnSnapContainer && burnSnapContainer.querySelector && burnSnapContainer.querySelector('.runChip');
+  }
+
+  function ensureSnapshotModal(){
+    let modal = document.getElementById('snapshotModal');
+    if(modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'snapshotModal';
+    modal.className = 'snapshot-modal hidden';
+    modal.innerHTML = '<div class="snapshot-modal-box">'+
+      '<div class="snapshot-modal-header">'+
+        '<span id="snapshotModalTitle">Snapshots</span>'+
+        '<button id="snapshotModalClose" type="button">&times;</button>'+
+      '</div>'+
+      '<div class="snapshot-modal-sub">Letzte gespeicherte Zeiten des Dauertests (ms)</div>'+
+      '<canvas id="snapshotCanvas" width="360" height="220"></canvas>'+
+    '</div>';
+    document.body.appendChild(modal);
+    const close = document.getElementById('snapshotModalClose');
+    close.addEventListener('click', ()=>modal.classList.add('hidden'));
+    modal.addEventListener('click', e=>{ if(e.target===modal) modal.classList.add('hidden'); });
+    return modal;
+  }
+
+  function openSnapshotChart(values){
+    // Statt Mini-Zeitverlauf: im Snapshot-Dialog das gleiche Trace-Diagramm wie bei RUN anzeigen
+    // (nimmt den neuesten verfügbaren DT-Run; fallback: altes Zeit-Chart)
+    const newest =
+      (v5DtRuns && v5DtRuns.LAST && v5DtRuns.LAST.length ? v5DtRuns.LAST[v5DtRuns.LAST.length-1] : null) ||
+      (v5DtRuns && v5DtRuns.MILE && v5DtRuns.MILE.length ? v5DtRuns.MILE[v5DtRuns.MILE.length-1] : null) ||
+      (v5DtRuns && v5DtRuns.FIRST && v5DtRuns.FIRST.length ? v5DtRuns.FIRST[v5DtRuns.FIRST.length-1] : null);
+
+    if(newest && newest.runId !== undefined && newest.runId !== null){
+      // Öffnet das große Diagramm-Modal (full width + HiDPI) – Titel bleibt „Snapshots“
+      v5OpenRunDiagram(newest.runId, 'Snapshots');
+      return;
+    }
+
+    // Fallback: altes Zeit-Diagramm (falls keine Runs vorhanden)
+    if(!values || !values.length) return;
+    const modal = ensureSnapshotModal();
+    modal.classList.remove('hidden');
+    const canvas = document.getElementById('snapshotCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    const padding = 24;
+    const w = canvas.width - padding*2;
+    const h = canvas.height - padding*2;
+    const min = Math.min.apply(null, values);
+    const max = Math.max.apply(null, values);
+    const span = (max-min) || 1;
+
+    // axes
+    ctx.strokeStyle = '#CBD5F5';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, padding + h);
+    ctx.lineTo(padding + w, padding + h);
+    ctx.stroke();
+
+    // line
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    values.forEach(function(v,i){
+      const x = padding + (values.length === 1 ? w/2 : (w * i/(values.length-1)));
+      const y = padding + h - ((v-min)/span)*h;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // dots
+    ctx.fillStyle = '#1d4ed8';
+    values.forEach(function(v,i){
+      const x = padding + (values.length === 1 ? w/2 : (w * i/(values.length-1)));
+      const y = padding + h - ((v-min)/span)*h;
+      ctx.beginPath();
+      ctx.arc(x,y,3,0,Math.PI*2);
+      ctx.fill();
+    });
+  }
+
+  function parseSnapshotValue(el){
+    if(!el) return null;
+    // bevorzugt: dataset.ms (damit Labels im Chip nicht stören)
+    if(el.dataset && el.dataset.ms){
+      const n = parseFloat(String(el.dataset.ms).replace(',', '.'));
+      return isNaN(n) ? null : n;
+    }
+    const msEl = el.querySelector && el.querySelector('.ms');
+    const txt = (msEl ? msEl.textContent : (el.textContent || ''));
+    const num = parseFloat(String(txt).replace(',', '.'));
+    return isNaN(num) ? null : num;
+  }
+  function attachHandlers(){
+    if(!burnSnapContainer) return;
+    if(hasRunChips()) return; // nicht in die v5-Run-Kacheln eingreifen
+    Array.prototype.forEach.call(burnSnapContainer.children, function(chip){
+      chip.style.cursor = 'pointer';
+      chip.onclick = function(){
+        const vals = Array.prototype.map.call(burnSnapContainer.children, parseSnapshotValue)
+          .filter(function(v){return v!==null;});
+        openSnapshotChart(vals);
+      };
+    });
+  }
+
+  if(burnSnapContainer){
+    // ensure maximal 10 Chips (Ringpuffer)
+    const observer = new MutationObserver(function(){
+      while(burnSnapContainer.children.length > MAX_SNAPS){
+        burnSnapContainer.removeChild(burnSnapContainer.firstElementChild);
+      }
+      attachHandlers();
+    });
+    observer.observe(burnSnapContainer, {childList:true});
+    attachHandlers();
+  }
+})();
+</script>
+
+
+<style>
+.time-chart-modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:2100;}
+.time-chart-modal.hidden{display:none;}
+.time-chart-modal-box{background:#ffffff;border-radius:16px;padding:16px;width:90%;max-width:420px;box-shadow:0 12px 30px rgba(15,23,42,.35);}
+.time-chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:600;font-size:16px;color:#0f172a;}
+.time-chart-header button{border:none;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:#64748b;}
+.time-chart-sub{font-size:12px;color:#6b7280;margin-bottom:6px;}
+</style>
+
+<script>
+(function(){
+  var timeList = document.getElementById('tList');
+  if(!timeList) return;
+
+  // NOTE:
+  // In der "v5"-Variante werden hier Run-Kacheln (Buttons .runChip) gerendert, die
+  // das Trace-Diagramm öffnen. Dieser Demo-Modal-Code (Zeitverlauf) war für einfache
+  // Chips gedacht und darf die Run-Handler nicht überschreiben.
+  function hasRunChips(){
+    return timeList && timeList.querySelector && timeList.querySelector('.runChip');
+  }
+
+  function ensureTimeModal(){
+    var m = document.getElementById('timeChartModal');
+    if(m) return m;
+    m = document.createElement('div');
+    m.id = 'timeChartModal';
+    m.className = 'time-chart-modal hidden';
+    m.innerHTML = '<div class="time-chart-modal-box">'+
+        '<div class="time-chart-header">'+
+          '<span>Letzte 10 Zeiten</span>'+
+          '<button type="button" id="timeChartClose">&times;</button>'+
+        '</div>'+
+        '<div class="time-chart-sub">Zeitverlauf (ms) – Demo-Daten</div>'+
+        '<canvas id="timeChartCanvas" width="360" height="220"></canvas>'+
+      '</div>';
+    document.body.appendChild(m);
+    var close = document.getElementById('timeChartClose');
+    if(close) close.addEventListener('click', function(){ m.classList.add('hidden'); });
+    m.addEventListener('click', function(e){ if(e.target === m) m.classList.add('hidden'); });
+    return m;
+  }
+
+  function openTimeChart(values){
+    if(!values || !values.length) return;
+    var m = ensureTimeModal();
+    m.classList.remove('hidden');
+    var canvas = document.getElementById('timeChartCanvas');
+    if(!canvas || !canvas.getContext) return;
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    var padding = 24;
+    var w = canvas.width - padding*2;
+    var h = canvas.height - padding*2;
+    var min = Math.min.apply(null, values);
+    var max = Math.max.apply(null, values);
+    var span = (max-min) || 1;
+
+    ctx.strokeStyle = '#CBD5F5';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, padding + h);
+    ctx.lineTo(padding + w, padding + h);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    values.forEach(function(v,i){
+      var x = padding + (values.length === 1 ? w/2 : (w * i/(values.length-1)));
+      var y = padding + h - ((v-min)/span)*h;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = '#1d4ed8';
+    values.forEach(function(v,i){
+      var x = padding + (values.length === 1 ? w/2 : (w * i/(values.length-1)));
+      var y = padding + h - ((v-min)/span)*h;
+      ctx.beginPath();
+      ctx.arc(x,y,3,0,Math.PI*2);
+      ctx.fill();
+    });
+  }
+
+  function getTimes(){
+    if(typeof times !== 'undefined' && Array.isArray(times) && times.length){
+      return times.slice();
+    }
+    var vals = [];
+    Array.prototype.forEach.call(timeList.children, function(chip){
+      var txt = chip.querySelector('.ms') ? chip.querySelector('.ms').textContent : chip.textContent;
+      var num = parseFloat((txt||'').replace(',', '.'));
+      if(!isNaN(num)) vals.push(num);
+    });
+    return vals;
+  }
+
+  function attachHandlers(){
+    if(hasRunChips()) return;
+    Array.prototype.forEach.call(timeList.children, function(chip){
+      chip.style.cursor = 'pointer';
+      chip.onclick = function(){
+        var vals = getTimes();
+        if(vals && vals.length) openTimeChart(vals);
+      };
+    });
+  }
+
+  var obs = new MutationObserver(attachHandlers);
+  obs.observe(timeList, {childList:true});
+  attachHandlers();
+})();
+</script>
+
+<script>
+(function(){
+  var snapList = document.getElementById('tSnaps');
+  if(!snapList) return;
+
+  function hasRunChips(){
+    return snapList && snapList.querySelector && snapList.querySelector('.runChip');
+  }
+
+  function getSnapValues(){
+    if(typeof timeSnaps !== 'undefined' && Array.isArray(timeSnaps) && timeSnaps.length){
+      return timeSnaps.slice();
+    }
+    var vals = [];
+    Array.prototype.forEach.call(snapList.children, function(chip){
+      var txt = chip.querySelector('.ms') ? chip.querySelector('.ms').textContent : chip.textContent;
+      var num = parseFloat((txt||'').replace(',', '.'));
+      if(!isNaN(num)) vals.push(num);
+    });
+    return vals;
+  }
+
+  function attach(){
+    if(hasRunChips()) return;
+    Array.prototype.forEach.call(snapList.children, function(chip){
+      chip.style.cursor = 'pointer';
+      chip.onclick = function(){
+        var vals = getSnapValues();
+        if(typeof openTimeChart === 'function' && vals && vals.length){
+          openTimeChart(vals);
+        }
+      };
+    });
+  }
+
+  var o = new MutationObserver(attach);
+  o.observe(snapList, {childList:true});
+  attach();
+})();
+</script>
+
+
+<script>
+// ===== Bluetooth (Web-Bluetooth) Vorbereitung für T-Box (ESP32) =====
+
+// UUIDs passend zum ESP32-Sketch (Nordic UART Service / NUS):
+// - ESP32 -> App (NOTIFY)  : 6e400003-...
+// - App  -> ESP32 (WRITE)  : 6e400002-...
+const BLE_SERVICE_UUID     = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const BLE_CHAR_WRITE_UUID  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // App -> ESP32 (WRITE)
+const BLE_CHAR_NOTIFY_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // ESP32 -> App (NOTIFY)
+
+let bleDevice = null;
+let bleServer = null;
+let bleService = null;
+let bleWriteChar = null;   // WRITE (App -> ESP32)
+let bleNotifyChar = null;  // NOTIFY (ESP32 -> App)
+
+
+function updateBleButton(state){
+  const btn = document.getElementById('bleBtn');
+  if(!btn) return;
+  btn.classList.remove('connected','connecting','error');
+  if(state === 'connecting'){
+    btn.classList.add('connecting');
+    btn.textContent = 'Verbinde…';
+  } else if(state === 'connected'){
+    btn.classList.add('connected');
+    btn.textContent = 'T-Box verbunden';
+  } else if(state === 'error'){
+    btn.classList.add('error');
+    btn.textContent = 'Fehler';
+  } else {
+    btn.textContent = '🔵 Verbinden';
+  }
+}
+
+async function connectBleDevice(){
+  if(!navigator.bluetooth){
+    alert('Bluetooth wird von diesem Browser nicht unterstützt.');
+    return;
+  }
+  try{
+    updateBleButton('connecting');
+    // Filter: Name beginnt mit "T-Box"
+    const device = await (async ()=>{
+      // 1) Normal: nur Geräte anzeigen die wie "T-Box" heißen
+      try{
+        return await navigator.bluetooth.requestDevice({
+          // bevorzugt: NamePrefix + Service (zeigt direkt die T-Box)
+          filters: [{ namePrefix: 'T-Box', services: [BLE_SERVICE_UUID] }],
+          optionalServices: [BLE_SERVICE_UUID]
+        });
+      }catch(e){
+        // Wenn der User abbricht -> einfach weiterwerfen
+        if(e && (e.name === 'NotFoundError' || e.name === 'NotFoundError')){
+          // Manche Browser werfen NotFoundError sowohl bei "keins gefunden" als auch bei "abgebrochen".
+          // Wir bieten deshalb einen Fallback an.
+        }
+        // 2) Fallback: alle Geräte anzeigen (hilft bei abweichendem Namen / Cache / Android-Bugs)
+        // 2) Fallback: Service-Filter ohne Name (falls NamePrefix nicht matcht)
+        try{
+          return await navigator.bluetooth.requestDevice({
+            filters: [{ services: [BLE_SERVICE_UUID] }],
+            optionalServices: [BLE_SERVICE_UUID]
+          });
+        }catch(e2){
+          const ok = confirm('Keine kompatiblen Geräte gefunden. Möchtest du ALLE Bluetooth-Geräte anzeigen und dann "T-Box" auswählen?');
+          if(!ok) throw e2;
+          return await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [BLE_SERVICE_UUID]
+          });
+        }
+      }
+    })();
+    bleDevice = device;
+    bleDevice.addEventListener('gattserverdisconnected', onBleDisconnected);
+
+    bleServer = await bleDevice.gatt.connect();
+    const service = await bleServer.getPrimaryService(BLE_SERVICE_UUID);
+    bleNotifyChar = await service.getCharacteristic(BLE_CHAR_NOTIFY_UUID);
+    bleWriteChar = await service.getCharacteristic(BLE_CHAR_WRITE_UUID);
+
+    // Notifications einschalten (ESP32 -> UI)
+    await bleNotifyChar.startNotifications();
+    bleNotifyChar.addEventListener('characteristicvaluechanged', handleBleNotification);
+
+    updateBleButton('connected');
+  }catch(err){
+    console.error('BLE Connect error', err);
+    const msg = (err && (err.message || err.name)) ? (err.name ? (err.name + ': ' + err.message) : err.message) : String(err);
+    alert('Bluetooth-Fehler beim Verbinden:\n' + msg + '\n\nTipp: Bluetooth AN, Standort AN, und die T-Box muss im BLE-Scan sichtbar sein.');
+    updateBleButton('error');
+    setTimeout(()=>updateBleButton('disconnected'), 2000);
+  }
+}
+
+function onBleDisconnected(){
+  bleServer = null;
+  bleNotifyChar = null;
+  bleWriteChar = null;
+  updateBleButton('disconnected');
+}
+
+function disconnectBleDevice(){
+  try{
+    if(bleDevice && bleDevice.gatt && bleDevice.gatt.connected){
+      bleDevice.gatt.disconnect();
+    }
+  }catch(e){
+    console.warn('BLE disconnect error', e);
+  }
+  onBleDisconnected();
+}
+
+// Text an ESP32 senden (z. B. Kommandos wie TIME_START, BURN_START, CFG_BURN…)
+async function sendBleCommand(text){
+  try{
+    if(!bleWriteChar || !text) return;
+    const enc = new TextEncoder();
+    const data = enc.encode(text + '\n'); // \n als Trenner für mehrere Nachrichten
+    await bleWriteChar.writeValue(data);
+  }catch(e){
+    console.error('BLE write error', e);
+  }
+}
+
+// Eingehende Daten vom ESP32 verarbeiten -> an receiveBleData (Protokoll-Parser) weiterreichen
+// Eingehende Daten vom ESP32 verarbeiten (robust gegen Split-Pakete)
+let bleRxBuffer = '';
+
+function handleBleNotification(event){
+  const value = event.target.value;
+
+  // schneller/sauberer: TextDecoder
+  let chunk = '';
+  try{
+    chunk = new TextDecoder('utf-8').decode(value.buffer);
+  }catch(e){
+    // fallback
+    for(let i=0;i<value.byteLength;i++) chunk += String.fromCharCode(value.getUint8(i));
+  }
+
+  bleRxBuffer += chunk;
+
+  // Wir werten nur komplette Zeilen aus (\n als Trenner)
+  let idx;
+  while((idx = bleRxBuffer.indexOf('\n')) >= 0){
+    const line = bleRxBuffer.slice(0, idx);
+    bleRxBuffer = bleRxBuffer.slice(idx+1);
+    if(typeof receiveBleData === 'function'){
+      receiveBleData(line);
+    }else{
+      console.log('RX:', line);
+    }
+  }
+}
+
+// Button-Click-Logik: verbinden / trennen
+document.addEventListener('DOMContentLoaded', function(){
+  const btn = document.getElementById('bleBtn');
+  if(!btn) return;
+  updateBleButton('disconnected');
+  btn.addEventListener('click', function(){
+    if(bleDevice && bleDevice.gatt && bleDevice.gatt.connected){
+      disconnectBleDevice();
+    }else{
+      connectBleDevice();
+    }
+  });
+});
+</script>
+
+
+<script>
+function openTimeReportWindow(){
+  try{
+    const w = window.open('', '_blank');
+    if(!w){
+      alert('Popup wurde blockiert. Bitte Popups für diese Seite erlauben.');
+      return;
+    }
+
+    const getText = id => {
+      const el = document.getElementById(id);
+      return el ? (el.textContent || '').trim() : '';
+    };
+    const getVal = id => {
+      const el = document.getElementById(id);
+      return el ? (el.value || '').trim() : '';
+    };
+
+    const now = new Date();
+    const nowStr = now.toLocaleString();
+
+    const currentSec   = getText('tCurrentSec');
+    const currentMs    = getText('tCurrentMs');
+    const currentAngle = getText('tAngle');
+    const avgAngle     = getText('tAvgAngleBox');
+    const pressure     = getText('tPressureInput');
+
+    const times = Array.from(document.querySelectorAll('#tList .pill .ms')).map(el => (el.textContent || '').trim());
+
+    const antrieb       = getVal('f_antrieb');
+    const magnetventil  = getVal('f_magnetventil');
+    const schalldaempfer= getVal('f_schalldaempfer');
+    const rohr          = getVal('f_rohr');
+    const klappe        = getVal('f_klappe');
+    const serien        = getVal('f_seriennr');
+    const kuerzel       = getVal('f_kuerzel');
+    const notes         = getVal('f_notes_time');
+
+    const d_antrieb        = getText('d_antrieb');
+    const d_magnetventil   = getText('d_magnetventil');
+    const d_schalldaempfer = getText('d_schalldaempfer');
+    const d_rohr           = getText('d_rohr');
+    const d_klappe         = getText('d_klappe');
+
+    const imgs = Array.from(document.querySelectorAll('#uploader img')).map(img => img.src);
+
+    const fmtArt = (num, desc) => {
+      const n = (num || '').trim();
+      const d = (desc || '').trim();
+      if(!n && !d) return '';
+      if(!d) return n;
+      if(!n) return d;
+      return n;
+    };
+
+    let html = '';
+    html += '<!doctype html><html><head><meta charset="utf-8">';
+    html += '<title>Prüfprotokoll Zeitmessung</title>';
+    html += '<style>';
+    html += '@import url(\'https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;500&display=swap\');';
+    html += 'html,body{margin:0;padding:0;}';
+    html += 'body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f3f4f6;color:#111827;}';
+    html += 'h1{font-size:24px;margin:0 0 4px 0;letter-spacing:.08em;text-transform:uppercase;}';
+    html += 'h2{font-size:18px;margin:0 0 4px 0;text-transform:uppercase;}';
+    html += 'h3{font-size:14px;margin:0 0 4px 0;text-transform:uppercase;}';
+    html += 'table{width:100%;border-collapse:collapse;margin-top:4px;font-size:12px;}';
+    html += 'th,td{border:1px solid #d1d5db;padding:4px 6px;text-align:left;vertical-align:top;}';
+    html += 'th{background:#f9fafb;font-weight:600;}';
+    html += '.small{font-size:11px;color:#6b7280;}\n    .pdfNotesText{font-family:\'Roboto Slab\', serif;font-size:13px;line-height:1.5;color:#111827;}\n';
+    html += '.section{margin-top:18px;}';
+    html += '.imgRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}';
+    html += '.imgRow img{max-width:120px;max-height:120px;object-fit:cover;border-radius:4px;border:1px solid #d1d5db;}';
+    html += 'pre{white-space:pre-wrap;font-size:12px;border:1px solid #d1d5db;border-radius:4px;padding:6px;background:#f9fafb;}';
+    html += '.page{background:#ffffff;max-width:800px;margin:12px auto;padding:18px 26px 22px 26px;box-shadow:0 2px 10px rgba(15,23,42,0.18);box-sizing:border-box;}';
+    html += '.headerTop{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;border-bottom:2px solid #111827;padding-bottom:8px;}';
+    html += '.headerLeft{display:flex;flex-direction:column;gap:6px;}';
+    html += '.brandRow{display:flex;align-items:flex-end;gap:12px;}';
+    html += '.brandTitle{font-size:24px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}';
+    html += '.brandBadge{padding:8px 18px;background:#004DFF;color:#ffffff;font-weight:700;font-size:13px;border-radius:2px;text-transform:uppercase;}';
+    html += '.headerRight{font-size:11px;color:#374151;text-align:right;}';
+    html += '.headerRight div{margin-bottom:2px;}';
+    html += '.muted{color:#6b7280;}';
+    html += '.subText{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.12em;}';
+    html += '.pageFooter{margin-top:12px;border-top:1px solid #e5e7eb;padding-top:4px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#9ca3af;}';
+    html += '.chartBox{margin-top:10px;border:1px solid #d1d5db;border-radius:4px;padding:8px 10px;background:#f9fafb;}';
+    html += '.chartTitle{font-size:13px;font-weight:600;margin-bottom:4px;text-transform:uppercase;}';
+    html += '.chartSvg{width:100%;height:200px;}';
+    html += '.chartNote{margin-top:2px;font-size:11px;color:#6b7280;}';
+    html += '@page{size:A4;margin:12mm;}';    html += '@media print{body{background:#ffffff;} .page{box-shadow:none;margin:0 auto 0 auto;width:210mm;min-height:277mm;border:none;border-radius:0;} .page + .page{page-break-before:always;}}';
+    html += '</style></head><body>';
+    // Seite 1 – Kopf + Tabellen
+    html += '<div class="page">';
+    html += '<div class="headerTop">';
+    html += '<div class="headerLeft">';
+    html += '<div class="brandRow"><div class="brandTitle">Prüfprotokoll</div><div class="brandBadge">Zeitmessung</div></div>';
+    html += '<div class="subText">T-Box Pneumatik – Prüf- und Dokumentationssystem</div>';
+    html += '</div>';
+    html += '<div class="headerRight">';
+    html += '<div><span class="muted">Erstellt am</span> ' + nowStr + '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<div class="section"><h3>Messwerte (aktuell)</h3>';
+    html += '<table><tbody>';
+    html += '<tr><th style="width:35%">Aktuelle Zeit</th><td>' + currentSec + ' (' + currentMs + ')</td></tr>';
+    html += '<tr><th>Aktuelle Position</th><td>' + currentAngle + '</td></tr>';
+    html += '<tr><th>&alpha; Winkel (letzte 10)</th><td>' + avgAngle + '</td></tr>';
+    html += '<tr><th>Druck</th><td>' + pressure + '</td></tr>';
+    html += '</tbody></table></div>';
+
+    html += '<div class="section"><h3>Stammdaten zum Test</h3>';
+    html += '<table><tbody>';
+    html += '<tr><th>Artikelnummer Antrieb</th><td style="width:25%">' + (antrieb || '') + '</td><td>' + (d_antrieb || '') + '</td></tr>';
+    html += '<tr><th>Artikelnummer Magnetventil</th><td>' + (magnetventil || '') + '</td><td>' + (d_magnetventil || '') + '</td></tr>';
+    html += '<tr><th>Artikelnummer Schalldämpfer</th><td>' + (schalldaempfer || '') + '</td><td>' + (d_schalldaempfer || '') + '</td></tr>';
+    html += '<tr><th>Artikelnummer Rohr/Schlauch</th><td>' + (rohr || '') + '</td><td>' + (d_rohr || '') + '</td></tr>';
+    html += '<tr><th>Artikelnummer Klappe/Kugelhahn</th><td>' + (klappe || '') + '</td><td>' + (d_klappe || '') + '</td></tr>';
+    html += '<tr><th>Seriennummer Antrieb</th><td colspan="2">' + (serien || '') + '</td></tr>';
+    html += '<tr><th>Kürzel Bearbeiter</th><td colspan="2">' + (kuerzel || '') + '</td></tr>';
+    html += '</tbody></table></div>';
+
+    html += '<div class="section"><h3>Letzte 10 Zeiten</h3>';
+    if(times.length){
+      html += '<table><thead><tr><th style="width:35%">Index</th><th>Schaltzeit [ms]</th></tr></thead><tbody>';
+      times.forEach(function(t, i){
+        html += '<tr><td>' + (i+1) + '</td><td>' + t + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    } else {
+      html += '<div class="small">Keine Zeiten vorhanden.</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="section"><h3>Bemerkungen</h3>';
+    if(notes){
+      html += '<pre class="pdfNotesText">' + notes.replace(/</g,'&lt;') + '</pre>';
+    } else {
+      html += '<div class="small">Keine Bemerkungen erfasst.</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="section"><h3>Bilder</h3>';
+    if(imgs.length){
+      html += '<div class="imgRow">';
+      (function(){
+        var n = imgs.length;
+        var size = 140; // default
+        if(n <= 2){ size = 240; }
+        else if(n <= 4){ size = 180; }
+        else { size = 140; }
+        imgs.forEach(function(src){
+          html += '<img src="' + src + '" style="max-width:' + size + 'px;max-height:' + size + 'px;" />';
+        });
+      })();
+      html += '</div>';
+    } else {
+      html += '<div class="small">Keine Bilder erfasst.</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="pageFooter"><span>T-Box – Zeitmessung</span><span>Seite 1 / 2</span></div>';
+    html += '</div>'; // page 1
+
+    html += '<div class="html2pdf__page-break"></div>';
+
+    // Seite 2 – Diagramm wie im Anhang
+    html += '<div class="page">';
+    html += '<div class="headerTop">';
+    html += '<div class="headerLeft">';
+    html += '<div class="brandRow"><div class="brandTitle">Prüfprotokoll</div><div class="brandBadge">Zeitmessung</div></div>';
+    html += '<div class="subText">Diagramme und Auswertung</div>';
+    html += '</div>';
+    html += '<div class="headerRight"><div><span class="muted">Erstellt am</span> ' + nowStr + '</div></div>';
+    html += '</div>';
+
+    html += '<div class="section">';
+    html += '<div class="chartBox">';
+    html += '<div class="chartTitle">Schaltzeit-Verlauf (letzte 10 Werte)</div>';
+
+    const nums = times.map(function(t){ return parseFloat(String(t).replace(',', '.')); }).filter(function(v){ return !isNaN(v); });
+    if(nums.length >= 2){
+      const max = Math.max.apply(null, nums);
+      const min = Math.min.apply(null, nums);
+      const wSvg = 600;
+      const hSvg = 200;
+      const pad = 28;
+      const span = (max - min) || 1;
+      let pts = [];
+      nums.forEach(function(v, i){
+        const x = pad + (wSvg - 2*pad) * (nums.length===1 ? 0.5 : i/(nums.length-1));
+        const y = pad + (hSvg - 2*pad) * (1 - (v - min) / span);
+        pts.push(x+','+y);
+      });
+
+      html += '<svg class="chartSvg" viewBox="0 0 ' + wSvg + ' ' + hSvg + '">';
+      html += '<rect x="0" y="0" width="' + wSvg + '" height="' + hSvg + '" fill="#ffffff"/>';
+      html += '<line x1="' + pad + '" y1="' + (hSvg-pad) + '" x2="' + (wSvg-pad) + '" y2="' + (hSvg-pad) + '" stroke="#9ca3af" stroke-width="1" />';
+      html += '<line x1="' + pad + '" y1="' + pad + '" x2="' + pad + '" y2="' + (hSvg-pad) + '" stroke="#9ca3af" stroke-width="1" />';
+      html += '<polyline fill="none" stroke="#111827" stroke-width="2" points="' + pts.join(' ') + '" />';
+      html += '</svg>';
+      html += '<div class="chartNote">Min: ' + max.toFixed(1) + ' ms · Max: ' + min.toFixed(1) + ' ms · N=' + nums.length + '</div>';
+    } else {
+      html += '<div class="chartNote">Noch keine ausreichenden Werte für ein Diagramm vorhanden.</div>';
+    }
+
+    html += '</div></div>';
+
+    // Diagramme (2x2) direkt unter Snapshot-Schaltzeiten
+    html += diagramsHtml;
+
+    html += '<div class="pageFooter"><span>T-Box – Zeitmessung</span><span>Seite 2 / 2</span></div>';
+    html += '</div>'; // page 2
+
+    html += '</body></html>';
+
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    // ==== PDF-Download statt Drucken (Zeitmessung) ====
+    try {
+      const filename = (function(){
+        const now = new Date();
+        const pad = n => String(n).padStart(2,'0');
+        const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}_${pad(now.getSeconds())}`;
+        const srcVal = (document.getElementById('f_antrieb')||{}).value || '';
+        const srcDesc = (document.getElementById('d_antrieb')||{}).textContent || '';
+        const merged = (srcVal + ' ' + srcDesc).trim();
+        const artikelnrMatch = merged.match(/\d{5,}/);
+        const artikelnr = artikelnrMatch ? artikelnrMatch[0] : '00000000';
+        const kurzMatch = merged.match(/[A-ZÄÖÜ]{2,}-\d{2,3}(?:\/\d{2,3})?/i);
+        const kurz = kurzMatch ? kurzMatch[0].replace(/\s+/g,'') : 'Unbekannt';
+        return `Zeitmessungsprotokoll_${artikelnr}_${kurz}_${dateStr}.pdf`;
+      })();
+
+      const s = w.document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      s.onload = function(){
+        const opt = { margin:0, filename: filename, image:{type:'jpeg',quality:0.96}, html2canvas:{ scale:2, useCORS:true }, jsPDF:{ unit:'mm', format:'a4', orientation:'portrait' } };
+        const waitImgs = function(){
+          const imgs = Array.from(w.document.images || []);
+          if(!imgs.length) return Promise.resolve();
+          return Promise.all(imgs.map(function(img){
+            if(img.complete) return Promise.resolve();
+            return new Promise(function(res){ img.onload = img.onerror = res; });
+          }));
+        };
+        waitImgs().then(function(){
+          w.html2pdf().set(opt).from(w.document.body).save().then(function(){
+          setTimeout(function(){ try{ w.close(); }catch(e){} }, 400);
+        });
+        });
+      };
+      w.document.body.appendChild(s);
+    } catch(e3){
+      console.warn('PDF-Autodownload (Zeitmessung) fehlgeschlagen:', e3);
+    }
+    // ==== Ende PDF-Download ====
+
+
+    try {
+      w.focus();
+    } catch(e2) {
+      console.warn('Druckdialog konnte nicht automatisch geöffnet werden:', e2);
+    }
+  }catch(e){
+    console.error('Report error', e);
+    alert('Protokoll konnte nicht geöffnet werden.');
+  }
+}
+
+function openBurnReportWindow(){
+  try{
+    const w = window.open('', '_blank');
+    if(!w){
+      alert('Popup wurde blockiert. Bitte Popups für diese Seite erlauben.');
+      return;
+    }
+
+    const getText = id => {
+      const el = document.getElementById(id);
+      return el ? (el.textContent || '').trim() : '';
+    };
+    const getVal = id => {
+      const el = document.getElementById(id);
+      return el ? (el.value || '').trim() : '';
+    };
+
+    const now = new Date();
+    const nowStr = now.toLocaleString();
+
+
+    // ---- Build run diagrams for PDF (2x2 grid like popup) ----
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const cfgIds = Object.keys(window.v5CfgDtByTestId || {}).map(n => Number(n)).filter(n => Number.isFinite(n));
+    let pdfTestId = cfgIds.length ? Math.max(...cfgIds) : null;
+
+    if (pdfTestId == null) {
+      const dtRunsAll = Object.values(window.v5RunsById || {}).filter(r => r && String(r.tag || '').toUpperCase().startsWith('DT'));
+      if (dtRunsAll.length) pdfTestId = Math.max(...dtRunsAll.map(r => Number(r.testId) || 0));
+    }
+
+    const dtRuns = Object.values(window.v5RunsById || {})
+      .filter(r => r && String(r.tag || '').toUpperCase().startsWith('DT') && (pdfTestId == null || Number(r.testId) === Number(pdfTestId)))
+      .sort((a,b) => (Number(a.cycle) || 0) - (Number(b.cycle) || 0));
+
+    const diagramImgs = [];
+    try {
+      for (const r of dtRuns) {
+        const c = document.createElement('canvas');
+        c.width = 1200;
+        c.height = 700;
+        const meta = (window.v5MetaByTestId && r && r.testId != null) ? (window.v5MetaByTestId[String(r.testId)] || window.v5LastMeta || null) : (window.v5LastMeta || null);
+        window.v5DrawTraceOnCanvas(c, r, meta);
+        diagramImgs.push({
+          title: `RUN ${r.runId} · CYCLE ${r.cycle} · ${r.dirA2B ? 'A2B' : 'B2A'} · t=${r.t_ms}ms · ERR ${r.err}`,
+          data: c.toDataURL('image/png')
+        });
+      }
+    } catch(e) {
+      // ignore PDF diagram rendering errors, report will still generate
+      console.warn('PDF diagram render failed', e);
+    }
+
+    let diagramsHtml = '';
+    if (diagramImgs.length) {
+      diagramsHtml += `<div class="section"><div class="secTitle">DIAGRAMME (2×2)</div>`;
+      for (let i=0; i<diagramImgs.length; i+=4) {
+        diagramsHtml += `<div class="grid">`;
+        for (let j=i; j<Math.min(i+4, diagramImgs.length); j++) {
+          const it = diagramImgs[j];
+          diagramsHtml += `<div class="cell"><div class="cap">${esc(it.title)}</div><img src="${it.data}" /></div>`;
+        }
+        diagramsHtml += `</div>`;
+        if (i+4 < diagramImgs.length) diagramsHtml += `<div class="html2pdf__page-break"></div>`;
+      }
+      diagramsHtml += `</div>`;
+    }
+    const cfgCyc   = getText('burnCyclesValue');
+    const cfgPause = getText('burnPauseValue');
+    const cfgDev   = getText('burnDeviationValue');
+
+    const curCyc   = getText('bCyc');
+    const maxCyc   = getText('bMax');
+    const lastMs   = getText('bLast');
+    const dev      = getText('bDev');
+    const angleNow = getText('bAngleNow');
+
+    const snaps = Array.from(document.querySelectorAll('#bSnaps .pill .ms')).map(el => (el.textContent || '').trim());
+
+    const antrieb = getVal('f_burn_antrieb');
+    const partner = getVal('f_burn_partner');
+    const serien  = getVal('f_burn_seriennr');
+    const kuerzel = getVal('f_burn_kuerzel');
+    const notes   = getVal('f_notes_burn');
+    const kurzAntrieb = (getText('d_burn_antrieb')||'').replace(/^Kurzbezeichnung:\s*/,'');
+    const kurzPartner = (getText('d_burn_partner')||'').replace(/^Kurzbezeichnung:\s*/,'');
+
+    const imgs = Array.from(document.querySelectorAll('#uploader img')).map(img => img.src);
+
+    let html = '';
+    html += '<!doctype html><html><head><meta charset="utf-8">';
+    html += '<title>Prüfprotokoll Dauertest</title>';
+    html += '<style>';
+    html += 'html,body{margin:0;padding:0;}';
+    html += 'body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f3f4f6;color:#111827;}';
+    html += 'h1{font-size:24px;margin:0 0 4px 0;letter-spacing:.08em;text-transform:uppercase;}';
+    html += 'h2{font-size:18px;margin:0 0 4px 0;text-transform:uppercase;}';
+    html += 'h3{font-size:14px;margin:0 0 4px 0;text-transform:uppercase;}';
+    html += 'table{width:100%;border-collapse:collapse;margin-top:4px;font-size:12px;}';
+    html += 'th,td{border:1px solid #d1d5db;padding:4px 6px;text-align:left;vertical-align:top;}';
+    html += 'th{background:#f9fafb;font-weight:600;}';
+    html += '.small{font-size:11px;color:#6b7280;}';
+    html += '.section{margin-top:18px;}';
+    html += '.imgRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}';
+    html += '.imgRow img{max-width:120px;max-height:120px;object-fit:cover;border-radius:4px;border:1px solid #d1d5db;}';
+    html += 'pre{white-space:pre-wrap;font-size:12px;border:1px solid #d1d5db;border-radius:4px;padding:6px;background:#f9fafb;}';
+    html += '.page{background:#ffffff;max-width:800px;margin:12px auto;padding:18px 26px 22px 26px;box-shadow:0 2px 10px rgba(15,23,42,0.18);box-sizing:border-box;}';
+    html += '.headerTop{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;border-bottom:2px solid #111827;padding-bottom:8px;}';
+    html += '.headerLeft{display:flex;flex-direction:column;gap:6px;}';
+    html += '.brandRow{display:flex;align-items:flex-end;gap:12px;}';
+    html += '.brandTitle{font-size:24px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}';
+    html += '.brandBadge{padding:8px 18px;background:#004DFF;color:#ffffff;font-weight:700;font-size:13px;border-radius:2px;text-transform:uppercase;}';
+    html += '.headerRight{font-size:11px;color:#374151;text-align:right;}';
+    html += '.headerRight div{margin-bottom:2px;}';
+    html += '.muted{color:#6b7280;}';
+    html += '.subText{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.12em;}';
+    html += '.pageFooter{margin-top:12px;border-top:1px solid #e5e7eb;padding-top:4px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#9ca3af;}';
+    html += '.chartBox{margin-top:10px;border:1px solid #d1d5db;border-radius:4px;padding:8px 10px;background:#f9fafb;}';
+    html += '.chartTitle{font-size:13px;font-weight:600;margin-bottom:4px;text-transform:uppercase;}';
+    html += '.chartSvg{width:100%;height:200px;}';
+    html += '.chartNote{margin-top:2px;font-size:11px;color:#6b7280;}';
+    html += '@page{size:A4;margin:12mm;}';
+    html += '@media print{.pagebreak{page-break-before:always;}}';
+    html += '.grid{display:grid;grid-template-columns:1fr 1fr;grid-gap:10mm;margin-top:6mm;}';
+    html += '.cell{border:1px solid #d0d0d0;padding:4mm;border-radius:4mm;}';
+    html += '.cap{font-size:12px;font-weight:700;margin:0 0 3mm 0;}';
+    html += '.cell img{width:100%;height:auto;display:block;}';
+    html += '.pagebreak{height:0;overflow:hidden;}';
+    html += '</style></head><body>';
+    // Seite 1
+    html += '<div class="page">';
+    html += '<div class="headerTop">';
+    html += '<div class="headerLeft">';
+    html += '<div class="brandRow"><div class="brandTitle">Prüfprotokoll</div><div class="brandBadge">Dauertest</div></div>';
+    html += '<div class="subText">T-Box Pneumatik – Prüf- und Dokumentationssystem</div>';
+    html += '</div>';
+    html += '<div class="headerRight"><div><span class="muted">Erstellt am</span> ' + nowStr + '</div></div>';
+    html += '</div>';
+
+    html += '<div class="section"><h3>Konfiguration</h3>';
+    html += '<table><tbody>';
+    html += '<tr><th style="width:35%">Zyklen Soll</th><td>' + (cfgCyc || '') + '</td></tr>';
+    html += '<tr><th>Pause zwischen Zyklen</th><td>' + (cfgPause || '') + '</td></tr>';
+    html += '<tr><th>Abweichung (Stopp bei)</th><td>' + (cfgDev || '') + '</td></tr>';
+    html += '</tbody></table></div>';
+
+    html += '<div class="section"><h3>Aktueller Status</h3>';
+    html += '<table><tbody>';
+    html += '<tr><th style="width:35%">Aktuelle Zyklen</th><td>' + (curCyc || '') + ' / ' + (maxCyc || '') + '</td></tr>';
+    html += '<tr><th>Letzter Schaltvorgang</th><td>' + (lastMs || '') + '</td></tr>';
+    html += '<tr><th>Max. Abweichung</th><td>' + (dev || '') + '</td></tr>';
+    html += '<tr><th>Aktuelle Position</th><td>' + (angleNow || '') + '</td></tr>';
+    html += '</tbody></table></div>';
+
+    html += '<div class="section"><h3>Snapshots</h3>';
+    if(snaps.length){
+      html += '<table><thead><tr><th style="width:35%">Index</th><th>Schaltzeit [ms]</th></tr></thead><tbody>';
+      snaps.forEach(function(t, i){
+        html += '<tr><td>' + (i+1) + '</td><td>' + t + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    } else {
+      html += '<div class="small">Keine Snapshots vorhanden.</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="section"><h3>Stammdaten (Dauertest)</h3>';
+    html += '<table><tbody>';
+    html += '<tr><th>Artikelnummer Antrieb</th><td>' + (antrieb || '') + '</td></tr>';
+    html += '<tr><th>Kurzbezeichnung Antrieb</th><td>' + (kurzAntrieb || '') + '</td></tr>';
+    html += '<tr><th>Artikelnummer Klappe/Kugelhahn</th><td>' + (partner || '') + '</td></tr>';
+    html += '<tr><th>Kurzbezeichnung Klappe/Kugelhahn</th><td>' + (kurzPartner || '') + '</td></tr>';
+    html += '<tr><th>Seriennummer Antrieb</th><td>' + (serien || '') + '</td></tr>';
+    html += '<tr><th>Kürzel Bearbeiter</th><td>' + (kuerzel || '') + '</td></tr>';
+    html += '</tbody></table></div>';
+
+    html += '<div class="section"><h3>Bemerkungen</h3>';
+    if(notes){
+      html += '<pre class="pdfNotesText">' + notes.replace(/</g,'&lt;') + '</pre>';
+    } else {
+      html += '<div class="small">Keine Bemerkungen erfasst.</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="section"><h3>Bilder</h3>';
+    if(imgs.length){
+      html += '<div class="imgRow">';
+      (function(){
+        var n = imgs.length;
+        var size = 140; // default
+        if(n <= 2){ size = 240; }
+        else if(n <= 4){ size = 180; }
+        else { size = 140; }
+        imgs.forEach(function(src){
+          html += '<img src="' + src + '" style="max-width:' + size + 'px;max-height:' + size + 'px;" />';
+        });
+      })();
+      html += '</div>';
+    } else {
+      html += '<div class="small">Keine Bilder erfasst.</div>';
+    }
+    html += '</div>';
+
+        // diagrams moved to page 2 (under Snapshot-Schaltzeiten)
+
+    html += '<div class="pageFooter"><span>T-Box – Dauertest</span><span>Seite 1 / 2</span></div>';
+    html += '</div>'; // page1
+
+    html += '<div class="html2pdf__page-break"></div>';
+
+    // Seite 2 – Diagramm
+    html += '<div class="page">';
+    html += '<div class="headerTop">';
+    html += '<div class="headerLeft">';
+    html += '<div class="brandRow"><div class="brandTitle">Prüfprotokoll</div><div class="brandBadge">Dauertest</div></div>';
+    html += '<div class="subText">Diagramme und Auswertung</div>';
+    html += '</div>';
+    html += '<div class="headerRight"><div><span class="muted">Erstellt am</span> ' + nowStr + '</div></div>';
+    html += '</div>';
+
+    html += '<div class="section">';
+    html += '<div class="chartBox">';
+    html += '<div class="chartTitle">Snapshot-Schaltzeiten</div>';
+
+    const nums = snaps.map(function(t){ return parseFloat(String(t).replace(',', '.')); }).filter(function(v){ return !isNaN(v); });
+    if(nums.length >= 2){
+      const max = Math.max.apply(null, nums);
+      const min = Math.min.apply(null, nums);
+      const wSvg = 600;
+      const hSvg = 200;
+      const pad = 28;
+      const span = (max - min) || 1;
+      let pts = [];
+      nums.forEach(function(v, i){
+        const x = pad + (wSvg - 2*pad) * (nums.length===1 ? 0.5 : i/(nums.length-1));
+        const y = pad + (hSvg - 2*pad) * (1 - (v - min) / span);
+        pts.push(x+','+y);
+      });
+
+      html += '<svg class="chartSvg" viewBox="0 0 ' + wSvg + ' ' + hSvg + '">';
+      html += '<rect x="0" y="0" width="' + wSvg + '" height="' + hSvg + '" fill="#ffffff"/>';
+      html += '<line x1="' + pad + '" y1="' + (hSvg-pad) + '" x2="' + (wSvg-pad) + '" y2="' + (hSvg-pad) + '" stroke="#9ca3af" stroke-width="1" />';
+      html += '<line x1="' + pad + '" y1="' + pad + '" x2="' + pad + '" y2="' + (hSvg-pad) + '" stroke="#9ca3af" stroke-width="1" />';
+      html += '<polyline fill="none" stroke="#111827" stroke-width="2" points="' + pts.join(' ') + '" />';
+      html += '</svg>';
+      html += '<div class="chartNote">Min: ' + max.toFixed(1) + ' ms · Max: ' + min.toFixed(1) + ' ms · N=' + nums.length + '</div>';
+    } else {
+      html += '<div class="chartNote">Noch keine ausreichenden Werte für ein Diagramm vorhanden.</div>';
+    }
+
+    html += '</div></div>';
+    html += '<div class="pageFooter"><span>T-Box – Dauertest</span><span>Seite 2 / 2</span></div>';
+    html += '</div>'; // page2
+
+    html += '</body></html>';
+
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    // ==== PDF-Download statt Drucken (Dauertest) ====
+    try {
+      const filename = (function(){
+        const now = new Date();
+        const pad = n => String(n).padStart(2,'0');
+        const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}_${pad(now.getSeconds())}`;
+        const srcVal = (document.getElementById('f_burn_antrieb')||{}).value || '';
+        const srcDesc = (document.getElementById('d_burn_antrieb')||{}).textContent || '';
+        const merged = (srcVal + ' ' + srcDesc).trim();
+        const artikelnrMatch = merged.match(/\d{5,}/);
+        const artikelnr = artikelnrMatch ? artikelnrMatch[0] : '00000000';
+        const kurzMatch = merged.match(/[A-ZÄÖÜ]{2,}-\d{2,3}(?:\/\d{2,3})?/i);
+        const kurz = kurzMatch ? kurzMatch[0].replace(/\s+/g,'') : 'Unbekannt';
+        return `Dauertestprotokoll_${artikelnr}_${kurz}_${dateStr}.pdf`;
+      })();
+
+      const s = w.document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      s.onload = function(){
+        const opt = { margin:0, filename: filename, image:{type:'jpeg',quality:0.96}, html2canvas:{ scale:2, useCORS:true }, jsPDF:{ unit:'mm', format:'a4', orientation:'portrait' } };
+        const waitImgs = function(){
+          const imgs = Array.from(w.document.images || []);
+          if(!imgs.length) return Promise.resolve();
+          return Promise.all(imgs.map(function(img){
+            if(img.complete) return Promise.resolve();
+            return new Promise(function(res){ img.onload = img.onerror = res; });
+          }));
+        };
+        waitImgs().then(function(){
+          w.html2pdf().set(opt).from(w.document.body).save().then(function(){
+          setTimeout(function(){ try{ w.close(); }catch(e){} }, 400);
+        });
+        });
+      };
+      w.document.body.appendChild(s);
+    } catch(e3){
+      console.warn('PDF-Autodownload (Dauertest) fehlgeschlagen:', e3);
+    }
+    // ==== Ende PDF-Download ====
+
+
+    try {
+      w.focus();
+    } catch(e2) {
+      console.warn('Druckdialog konnte nicht automatisch geöffnet werden:', e2);
+    }
+  }catch(e){
+    console.error('Report error', e);
+    alert('Protokoll konnte nicht geöffnet werden.');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  const btnTime = document.getElementById('btn_time_pdf');
+  const btnBurn = document.getElementById('btn_burn_pdf');
+  if(btnTime) btnTime.addEventListener('click', openTimeReportWindow);
+  if(btnBurn) btnBurn.addEventListener('click', openBurnReportWindow);
+});
+</script>
+
+</body>
+</html>
